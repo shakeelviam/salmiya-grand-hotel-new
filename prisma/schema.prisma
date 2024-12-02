@@ -1,0 +1,186 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  hashedPassword  String
+  role            Role      @default(STAFF)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  reservations    Reservation[]
+  payments        Payment[]
+}
+
+model Guest {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String    @unique
+  phone         String
+  address       String?
+  nationality   String?
+  idType        String?   // Passport, National ID, etc.
+  idNumber      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  reservations  Reservation[]
+  payments      Payment[]
+}
+
+model RoomType {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  basePrice   Decimal   @db.Decimal(10, 2)
+  capacity    Int
+  amenities   String[]
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  rooms       Room[]
+}
+
+model Room {
+  id          String        @id @default(cuid())
+  number      String        @unique
+  floor       String
+  status      RoomStatus    @default(AVAILABLE)
+  roomTypeId  String
+  roomType    RoomType      @relation(fields: [roomTypeId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  reservations Reservation[]
+}
+
+model Reservation {
+  id            String    @id @default(cuid())
+  guestId       String
+  guest         Guest     @relation(fields: [guestId], references: [id])
+  roomId        String
+  room          Room      @relation(fields: [roomId], references: [id])
+  checkIn       DateTime
+  checkOut      DateTime
+  status        ReservationStatus @default(PENDING)
+  totalAmount   Decimal   @db.Decimal(10, 2)
+  notes         String?
+  createdById   String
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  payments      Payment[]
+  orders        Order[]
+}
+
+model MenuItem {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  category    String
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  roomNumber    String?
+  status        OrderStatus @default(PENDING)
+  totalAmount   Decimal     @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  items         OrderItem[]
+  payment       Payment?
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+  menuItemId  String
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  quantity    Int
+  price       Decimal   @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  amount          Decimal         @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus   @default(PENDING)
+  reservationId   String?
+  reservation     Reservation?    @relation(fields: [reservationId], references: [id])
+  orderId         String?        @unique
+  order           Order?         @relation(fields: [orderId], references: [id])
+  guestId         String
+  guest           Guest          @relation(fields: [guestId], references: [id])
+  processedById   String
+  processedBy     User           @relation(fields: [processedById], references: [id])
+  transactionId   String?
+  receiptUrl      String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  CLEANING
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  MOBILE_PAYMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
