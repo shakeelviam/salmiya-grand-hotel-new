@@ -8,16 +8,30 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+}
+
 model User {
   id              String    @id @default(cuid())
   name            String
   email           String    @unique
   hashedPassword  String
-  role            Role      @default(STAFF)
+  role            UserRole  @default(STAFF)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   reservations    Reservation[]
   payments        Payment[]
+  rolePermissions RolePermission[]
 }
 
 model Guest {
@@ -36,17 +50,42 @@ model Guest {
   payments      Payment[]
 }
 
-model RoomType {
+model Permission {
   id          String    @id @default(cuid())
   name        String    @unique
   description String?
-  basePrice   Decimal   @db.Decimal(10, 2)
-  capacity    Int
-  amenities   String[]
-  imageUrl    String?
+  action      PermissionAction
+  subject     String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  rooms       Room[]
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([userId, permissionId])
+}
+
+model RoomType {
+  id            String   @id @default(uuid())
+  name          String
+  description   String
+  adultCapacity Int
+  childCapacity Int
+  basePrice     Float
+  extraBedPrice Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rooms         Room[]
+  
+  @@map("room_types")
 }
 
 model Room {
@@ -138,12 +177,6 @@ model Payment {
   notes           String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-}
-
-enum Role {
-  ADMIN
-  MANAGER
-  STAFF
 }
 
 enum RoomStatus {

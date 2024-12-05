@@ -5,7 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(
+export function formatCurrency(amount: number): string {
+  return `${amount.toFixed(3)} KD`
+}
+
+export function formatCurrencyIntl(
   amount: number,
   currency: string = 'KWD',
   locale: string = 'en-KW'

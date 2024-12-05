@@ -1,50 +1,48 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { z } from 'zod'
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { withPermission } from "@/lib/permissions"
 
-// Validation schema for room type
-const roomTypeSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
-  basePrice: z.number().positive('Base price must be positive'),
-  capacity: z.number().int().positive('Capacity must be a positive integer'),
-  amenities: z.array(z.string()),
-  imageUrl: z.string().url().optional(),
-})
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json()
-    const validatedData = roomTypeSchema.parse(body)
-
-    const roomType = await prisma.roomType.create({
-      data: validatedData,
-    })
-
-    return NextResponse.json(roomType, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ errors: error.errors }, { status: 400 })
+export const GET = withPermission(
+  async function GET() {
+    try {
+      const roomTypes = await prisma.roomType.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+      return NextResponse.json(roomTypes)
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Failed to fetch room types" },
+        { status: 500 }
+      )
     }
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { action: "READ", subject: "roomType" }
+)
 
-export async function GET() {
-  try {
-    const roomTypes = await prisma.roomType.findMany({
-      include: {
-        rooms: true,
-      },
-    })
-    return NextResponse.json(roomTypes)
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    )
-  }
-}
+export const POST = withPermission(
+  async function POST(request: Request) {
+    try {
+      const json = await request.json()
+      const roomType = await prisma.roomType.create({
+        data: {
+          name: json.name,
+          description: json.description,
+          adultCapacity: json.adultCapacity,
+          childCapacity: json.childCapacity,
+          basePrice: json.basePrice,
+          extraBedPrice: json.extraBedPrice,
+        }
+      })
+
+      return NextResponse.json(roomType)
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Failed to create room type" },
+        { status: 500 }
+      )
+    }
+  },
+  { action: "CREATE", subject: "roomType" }
+)

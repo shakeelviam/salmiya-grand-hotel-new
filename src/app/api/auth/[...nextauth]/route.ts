@@ -1,32 +1,33 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import axios from 'axios'
+import { compare } from 'bcryptjs'
+import { prisma } from '@/lib/db'
 
 // Define custom session type
 declare module 'next-auth' {
   interface Session {
-    accessToken?: string
     user: {
       id: string
       email: string
       name: string
+      role: string
     }
   }
   interface User {
     id: string
     email: string
     name: string
-    token: string
+    role: string
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    accessToken?: string
     user?: {
       id: string
       email: string
       name: string
+      role: string
     }
   }
 }
@@ -34,7 +35,7 @@ declare module 'next-auth/jwt' {
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'ERPNext',
+      name: 'Credentials',
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
@@ -45,79 +46,55 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Login to ERPNext
-          const response = await axios.post(
-            `${process.env.ERPNEXT_URL}/api/method/login`,
-            {
-              usr: credentials.email,
-              pwd: credentials.password
-            },
-            {
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              }
-            }
-          )
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
 
-          if (response.data.message === 'Logged In') {
-            // Get user details
-            const userResponse = await axios.get(
-              `${process.env.ERPNEXT_URL}/api/method/frappe.auth.get_logged_user`,
-              {
-                headers: {
-                  'Cookie': response.headers['set-cookie']?.join('; ') || '',
-                  'Accept': 'application/json'
-                }
-              }
-            )
-
-            if (!userResponse.data.message) {
-              throw new Error('Failed to get user details')
-            }
-
-            return {
-              id: userResponse.data.message,
-              email: credentials.email,
-              name: userResponse.data.message,
-              token: response.headers['set-cookie']?.join('; ') || ''
-            }
+          if (!user || !user.hashedPassword) {
+            throw new Error('Invalid credentials')
           }
 
-          throw new Error('Invalid credentials')
+          const isPasswordValid = await compare(credentials.password, user.hashedPassword)
+
+          if (!isPasswordValid) {
+            throw new Error('Invalid credentials')
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+          }
         } catch (error) {
           console.error('Auth error:', error)
-          if (axios.isAxiosError(error)) {
-            throw new Error(error.response?.data?.message || 'Authentication failed')
-          }
-          throw error
+          throw new Error('Authentication failed')
         }
       }
     })
   ],
-  pages: {
-    signIn: '/auth/login',
-    error: '/auth/error',
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = user.token
         token.user = {
           id: user.id,
           email: user.email,
-          name: user.name
+          name: user.name,
+          role: user.role
         }
       }
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.accessToken = token.accessToken
-        session.user = token.user || session.user
+      if (token.user) {
+        session.user = token.user
       }
       return session
     }
+  },
+  pages: {
+    signIn: '/auth/login',
+    error: '/auth/error',
   },
   debug: process.env.NODE_ENV === 'development',
 }

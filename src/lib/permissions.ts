@@ -1,114 +1,90 @@
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/db"
+import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { PermissionAction } from "@prisma/client"
+
 export type Permission = {
-  create: boolean
-  read: boolean
-  update: boolean
-  delete: boolean
+  action: PermissionAction
+  subject: string
 }
 
-export type ResourcePermissions = {
-  users: Permission
-  rooms: Permission
-  roomTypes: Permission
-  guests: Permission
-  reservations: Permission
-  menuItems: Permission
-  orders: Permission
-  payments: Permission
-  reports: Permission
-}
+export async function checkPermission(
+  action: PermissionAction,
+  subject: string
+): Promise<boolean> {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return false
 
-const adminPermissions: Permission = {
-  create: true,
-  read: true,
-  update: true,
-  delete: true,
-}
-
-const managerPermissions: Permission = {
-  create: true,
-  read: true,
-  update: true,
-  delete: false,
-}
-
-const staffPermissions: Permission = {
-  create: false,
-  read: true,
-  update: false,
-  delete: false,
-}
-
-export const rolePermissions: Record<string, ResourcePermissions> = {
-  ADMIN: {
-    users: adminPermissions,
-    rooms: adminPermissions,
-    roomTypes: adminPermissions,
-    guests: adminPermissions,
-    reservations: adminPermissions,
-    menuItems: adminPermissions,
-    orders: adminPermissions,
-    payments: adminPermissions,
-    reports: adminPermissions,
-  },
-  MANAGER: {
-    users: staffPermissions,
-    rooms: managerPermissions,
-    roomTypes: managerPermissions,
-    guests: managerPermissions,
-    reservations: managerPermissions,
-    menuItems: managerPermissions,
-    orders: managerPermissions,
-    payments: managerPermissions,
-    reports: managerPermissions,
-  },
-  STAFF: {
-    users: staffPermissions,
-    rooms: staffPermissions,
-    roomTypes: staffPermissions,
-    guests: {
-      ...staffPermissions,
-      create: true,
-      update: true,
-    },
-    reservations: {
-      ...staffPermissions,
-      create: true,
-      update: true,
-    },
-    menuItems: staffPermissions,
-    orders: {
-      ...staffPermissions,
-      create: true,
-      update: true,
-    },
-    payments: {
-      ...staffPermissions,
-      create: true,
-    },
-    reports: staffPermissions,
-  },
-}
-
-export function hasPermission(
-  role: string | undefined,
-  resource: keyof ResourcePermissions,
-  action: keyof Permission
-): boolean {
-  if (!role) return false
-  return rolePermissions[role]?.[resource]?.[action] ?? false
-}
-
-export function getResourcePermissions(
-  role: string | undefined,
-  resource: keyof ResourcePermissions
-): Permission {
-  if (!role) {
-    return {
-      create: false,
-      read: false,
-      update: false,
-      delete: false,
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: {
+      rolePermissions: {
+        include: {
+          permission: true
+        }
+      }
     }
-  }
-  return rolePermissions[role]?.[resource] ?? staffPermissions
+  })
+
+  if (!user) return false
+
+  // Admins have all permissions
+  if (user.role === 'ADMIN') return true
+
+  // Check if user has the specific permission
+  return user.rolePermissions.some(
+    rp => rp.permission.action === action && rp.permission.subject === subject
+  )
 }
+
+export async function withPermission(
+  handler: Function,
+  permission: Permission
+) {
+  return async function(req: Request, context: any) {
+    const hasPermission = await checkPermission(permission.action, permission.subject)
+    
+    if (!hasPermission) {
+      return NextResponse.json(
+        { error: "Unauthorized: Insufficient permissions" },
+        { status: 403 }
+      )
+    }
+
+    return handler(req, context)
+  }
+}
+
+// Default permissions for each role
+export const defaultPermissions = {
+  ADMIN: [
+    { action: "CREATE", subject: "all" },
+    { action: "READ", subject: "all" },
+    { action: "UPDATE", subject: "all" },
+    { action: "DELETE", subject: "all" },
+  ],
+  MANAGER: [
+    { action: "CREATE", subject: "room" },
+    { action: "READ", subject: "room" },
+    { action: "UPDATE", subject: "room" },
+    { action: "CREATE", subject: "roomType" },
+    { action: "READ", subject: "roomType" },
+    { action: "UPDATE", subject: "roomType" },
+    { action: "CREATE", subject: "reservation" },
+    { action: "READ", subject: "reservation" },
+    { action: "UPDATE", subject: "reservation" },
+    { action: "CREATE", subject: "payment" },
+    { action: "READ", subject: "payment" },
+    { action: "UPDATE", subject: "payment" },
+  ],
+  STAFF: [
+    { action: "READ", subject: "room" },
+    { action: "READ", subject: "roomType" },
+    { action: "CREATE", subject: "reservation" },
+    { action: "READ", subject: "reservation" },
+    { action: "UPDATE", subject: "reservation" },
+    { action: "CREATE", subject: "payment" },
+    { action: "READ", subject: "payment" },
+  ],
+} as const

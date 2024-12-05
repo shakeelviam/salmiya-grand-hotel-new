@@ -16,18 +16,13 @@ import {
   HelpCircle,
   Coffee,
   UtensilsCrossed,
+  BedSingle,
 } from "lucide-react"
 
 export const navItems = [
   {
     title: "Overview",
     items: [
-      {
-        title: "Dashboard",
-        href: "/dashboard",
-        icon: LayoutDashboard,
-        description: "Hotel overview and key metrics",
-      },
       {
         title: "Analytics",
         href: "/dashboard/analytics",
@@ -44,6 +39,12 @@ export const navItems = [
         href: "/dashboard/rooms",
         icon: BedDouble,
         description: "Room management and status",
+      },
+      {
+        title: "Room Types",
+        href: "/dashboard/room-types",
+        icon: BedSingle,
+        description: "Manage room categories and types",
       },
       {
         title: "Reservations",
@@ -81,10 +82,10 @@ export const navItems = [
     title: "Operations",
     items: [
       {
-        title: "Staff",
-        href: "/dashboard/staff",
+        title: "Users",
+        href: "/dashboard/users",
         icon: UserCircle,
-        description: "Employee management",
+        description: "User management and roles",
       },
       {
         title: "Maintenance",

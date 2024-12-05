@@ -1,5 +1,9 @@
 "use client"
 
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -8,63 +12,323 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Users, Plus, Star } from "lucide-react"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+import { Users, Plus, Star, Upload } from "lucide-react"
+import { nationalities } from "@/lib/nationalities"
 
-const guests = [
-  {
-    id: "G-001",
-    name: "John Smith",
-    email: "john.smith@email.com",
-    phone: "+1 234-567-8900",
-    visits: 5,
-    status: "Checked In",
-    loyalty: "Gold",
-  },
-  {
-    id: "G-002",
-    name: "Emma Wilson",
-    email: "emma.w@email.com",
-    phone: "+1 234-567-8901",
-    visits: 3,
-    status: "Reserved",
-    loyalty: "Silver",
-  },
-  {
-    id: "G-003",
-    name: "Michael Brown",
-    email: "michael.b@email.com",
-    phone: "+1 234-567-8902",
-    visits: 1,
-    status: "Checked Out",
-    loyalty: "Standard",
-  },
-  {
-    id: "G-004",
-    name: "Sarah Johnson",
-    email: "sarah.j@email.com",
-    phone: "+1 234-567-8903",
-    visits: 8,
-    status: "Reserved",
-    loyalty: "Platinum",
-  },
-]
+const guestSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  mobileNumber: z.string().min(8, "Mobile number must be at least 8 digits"),
+  civilId: z.string().optional(),
+  email: z.string().email("Invalid email address"),
+  visaNumber: z.string().optional(),
+  passportNumber: z.string().min(1, "Passport number is required"),
+  nationality: z.string().min(1, "Nationality is required"),
+  passportCopy: z.any().refine((file) => file?.length > 0, "Passport copy is required"),
+  otherDocuments: z.any().optional(),
+})
+
+type GuestFormValues = z.infer<typeof guestSchema>
 
 export default function GuestsPage() {
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const form = useForm<GuestFormValues>({
+    resolver: zodResolver(guestSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      mobileNumber: "",
+      civilId: "",
+      email: "",
+      visaNumber: "",
+      passportNumber: "",
+      nationality: "",
+    },
+  })
+
+  const onSubmit = async (data: GuestFormValues) => {
+    try {
+      setLoading(true)
+      
+      // Handle passport copy upload
+      const passportFormData = new FormData()
+      passportFormData.append("file", data.passportCopy[0])
+      const passportRes = await fetch("/api/upload", {
+        method: "POST",
+        body: passportFormData,
+      })
+      const passportData = await passportRes.json()
+      
+      // Handle other documents upload
+      let otherDocumentsUrls: string[] = []
+      if (data.otherDocuments?.length) {
+        for (let file of Array.from(data.otherDocuments)) {
+          const formData = new FormData()
+          formData.append("file", file)
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          })
+          const fileData = await res.json()
+          otherDocumentsUrls.push(fileData.file_url)
+        }
+      }
+
+      // Create guest
+      const response = await fetch("/api/guests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          passportCopy: passportData.file_url,
+          otherDocuments: otherDocumentsUrls,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create guest")
+      }
+
+      toast({
+        title: "Success",
+        description: "Guest has been created successfully",
+      })
+      
+      setOpen(false)
+      form.reset()
+    } catch (error) {
+      console.error("Error creating guest:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create guest. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Guests</h2>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Guest
-        </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Guest
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Guest</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="+965 xxxx xxxx" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="civilId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Civil ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter Civil ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="visaNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Visa Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter Visa Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="passportNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Passport Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter Passport Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="nationality"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nationality</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select nationality" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {nationalities.map((nationality) => (
+                              <SelectItem key={nationality} value={nationality}>
+                                {nationality}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="passportCopy"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Passport Copy</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-4">
+                          <Input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => onChange(e.target.files)}
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="otherDocuments"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Other Documents</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-4">
+                          <Input
+                            type="file"
+                            accept="image/*,.pdf"
+                            multiple
+                            onChange={(e) => onChange(e.target.files)}
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating..." : "Create Guest"}
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -100,19 +364,7 @@ export default function GuestsPage() {
           <CardContent>
             <div className="text-2xl font-bold">864</div>
             <p className="text-xs text-muted-foreground">
-              37% of total guests
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Stay</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3.5 Days</div>
-            <p className="text-xs text-muted-foreground">
-              +0.5 from last month
+              Active members
             </p>
           </CardContent>
         </Card>
@@ -120,62 +372,10 @@ export default function GuestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Guest List</CardTitle>
+          <CardTitle>Recent Guests</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Guest ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Visits</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Loyalty</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {guests.map((guest) => (
-                <TableRow key={guest.id}>
-                  <TableCell>{guest.id}</TableCell>
-                  <TableCell>{guest.name}</TableCell>
-                  <TableCell>{guest.email}</TableCell>
-                  <TableCell>{guest.phone}</TableCell>
-                  <TableCell>{guest.visits}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        guest.status === "Checked In"
-                          ? "bg-green-100 text-green-800"
-                          : guest.status === "Reserved"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {guest.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        guest.loyalty === "Platinum"
-                          ? "bg-purple-100 text-purple-800"
-                          : guest.loyalty === "Gold"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : guest.loyalty === "Silver"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-zinc-100 text-zinc-800"
-                      }`}
-                    >
-                      <Star className="h-3 w-3" />
-                      {guest.loyalty}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {/* Guest list table will be implemented here */}
         </CardContent>
       </Card>
     </div>
