@@ -1,5 +1,4 @@
-// src/hooks/use-rooms.ts
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react"
 
 interface Room {
   id: string
@@ -15,17 +14,19 @@ interface Room {
 
 export function useRooms() {
   const [rooms, setRooms] = useState<Room[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchRooms = async () => {
+    setIsLoading(true)
+    setError(null)
     try {
-      const response = await fetch('/api/admin/rooms')
-      if (!response.ok) throw new Error('Failed to fetch rooms')
+      const response = await fetch("/api/admin/rooms")
+      if (!response.ok) throw new Error("Failed to fetch rooms")
       const data = await response.json()
       setRooms(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch rooms')
+      setError(err instanceof Error ? err.message : "An unknown error occurred")
     } finally {
       setIsLoading(false)
     }

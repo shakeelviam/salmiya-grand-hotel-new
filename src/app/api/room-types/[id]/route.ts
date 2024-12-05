@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    // Get the session to check if the user is authenticated
+    const session = await getServerSession()
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -16,7 +16,10 @@ export async function PUT(
       )
     }
 
+    // Parse the incoming JSON request
     const json = await request.json()
+
+    // Update the room type in the database
     const roomType = await prisma.roomType.update({
       where: { id: params.id },
       data: {
@@ -26,11 +29,12 @@ export async function PUT(
         childCapacity: json.childCapacity,
         basePrice: json.basePrice,
         extraBedPrice: json.extraBedPrice,
-      }
+      },
     })
 
     return NextResponse.json(roomType)
   } catch (error) {
+    console.error("Failed to update room type:", error)
     return NextResponse.json(
       { error: "Failed to update room type" },
       { status: 500 }
@@ -38,12 +42,13 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
+export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    // Get the session to check if the user is authenticated
+    const session = await getServerSession()
     if (!session) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -51,14 +56,25 @@ export async function DELETE(
       )
     }
 
-    await prisma.roomType.delete({
-      where: { id: params.id }
+    // Parse the incoming JSON request
+    const { isActive } = await request.json()
+
+    // Update the room type to toggle its active status
+    const roomType = await prisma.roomType.update({
+      where: { id: params.id },
+      data: {
+        isActive,
+      },
     })
 
-    return NextResponse.json({ message: "Room type deleted successfully" })
+    return NextResponse.json({
+      message: `Room type ${isActive ? "enabled" : "disabled"} successfully`,
+      roomType,
+    })
   } catch (error) {
+    console.error("Failed to update room type status:", error)
     return NextResponse.json(
-      { error: "Failed to delete room type" },
+      { error: "Failed to update room type status" },
       { status: 500 }
     )
   }

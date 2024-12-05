@@ -27,6 +27,7 @@ model User {
   email           String    @unique
   hashedPassword  String
   role            UserRole  @default(STAFF)
+  isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   reservations    Reservation[]
@@ -81,12 +82,14 @@ model RoomType {
   childCapacity Int
   basePrice     Float
   extraBedPrice Float
+  isActive      Boolean  @default(true) // New field for enabling/disabling room types
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   rooms         Room[]
-  
+
   @@map("room_types")
 }
+
 
 model Room {
   id          String        @id @default(cuid())

@@ -17,6 +17,8 @@ import {
   Coffee,
   UtensilsCrossed,
   BedSingle,
+  Key,
+  Shield,
 } from "lucide-react"
 
 export const navItems = [
@@ -79,14 +81,31 @@ export const navItems = [
     ],
   },
   {
-    title: "Operations",
+    title: "User Management",
     items: [
       {
         title: "Users",
         href: "/dashboard/users",
         icon: UserCircle,
-        description: "User management and roles",
+        description: "Manage system users and their access",
       },
+      {
+        title: "Roles",
+        href: "/dashboard/roles",
+        icon: Shield,
+        description: "Define roles and their permissions",
+      },
+      {
+        title: "Permissions",
+        href: "/dashboard/permissions",
+        icon: Key,
+        description: "Assign permissions to roles",
+      },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
       {
         title: "Maintenance",
         href: "/dashboard/maintenance",

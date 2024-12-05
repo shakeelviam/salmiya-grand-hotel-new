@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db"
-import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { PermissionAction } from "@prisma/client"
 
@@ -13,7 +12,7 @@ export async function checkPermission(
   action: PermissionAction,
   subject: string
 ): Promise<boolean> {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession()
   if (!session?.user?.email) return false
 
   const user = await prisma.user.findUnique({
@@ -21,30 +20,28 @@ export async function checkPermission(
     include: {
       rolePermissions: {
         include: {
-          permission: true
-        }
-      }
-    }
+          permission: true,
+        },
+      },
+    },
   })
 
   if (!user) return false
 
   // Admins have all permissions
-  if (user.role === 'ADMIN') return true
+  if (user.role === "ADMIN") return true
 
   // Check if user has the specific permission
   return user.rolePermissions.some(
-    rp => rp.permission.action === action && rp.permission.subject === subject
+    (rp) => rp.permission.action === action && rp.permission.subject === subject
   )
 }
 
-export async function withPermission(
-  handler: Function,
-  permission: Permission
-) {
-  return async function(req: Request, context: any) {
+// Updated withPermission function
+export async function withPermission(handler: Function, permission: Permission) {
+  return async function (req: Request, context: any) {
     const hasPermission = await checkPermission(permission.action, permission.subject)
-    
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: "Unauthorized: Insufficient permissions" },
@@ -52,7 +49,8 @@ export async function withPermission(
       )
     }
 
-    return handler(req, context)
+    // Properly await the handler's result
+    return await handler(req, context)
   }
 }
 

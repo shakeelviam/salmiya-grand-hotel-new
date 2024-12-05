@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { z } from 'zod'
+import { withPermission } from '@/lib/permissions'
 import { hash } from 'bcryptjs'
 
 // Validation schema for user
@@ -11,91 +11,115 @@ const userSchema = z.object({
   role: z.enum(['ADMIN', 'MANAGER', 'STAFF']).default('STAFF'),
 })
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url)
-    const role = searchParams.get('role')
-    const email = searchParams.get('email')
+// GET: Fetch all users
+export const GET = withPermission(
+  async function GET(req: Request) {
+    try {
+      const { searchParams } = new URL(req.url)
+      const role = searchParams.get('role')
+      const email = searchParams.get('email')
 
-    const where = {
-      ...(role && { role: role as 'ADMIN' | 'MANAGER' | 'STAFF' }),
-      ...(email && { email }),
-    }
+      const where = {
+        ...(role && { role: role as 'ADMIN' | 'MANAGER' | 'STAFF' }),
+        ...(email && { email }),
+      }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        // Exclude hashedPassword
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-    
-    return NextResponse.json(users)
-  } catch (error) {
-    console.error('Error fetching users:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    )
-  }
-}
+      const users = await prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          rolePermissions: {
+            include: {
+              permission: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json()
-    const validatedData = userSchema.parse(body)
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
-    })
-
-    if (existingUser) {
+      return NextResponse.json(users)
+    } catch (error) {
+      console.error('Error fetching users:', error)
       return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
+        { error: 'Failed to fetch users' },
+        { status: 500 }
       )
     }
+  },
+  { action: 'READ', subject: 'user' }
+)
 
-    // Hash password
-    const hashedPassword = await hash(validatedData.password, 12)
+// POST: Create a new user
+export const POST = withPermission(
+  async function POST(req: Request) {
+    try {
+      const body = await req.json()
+      const validatedData = userSchema.parse(body)
 
-    const user = await prisma.user.create({
-      data: {
-        ...validatedData,
-        hashedPassword,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        // Exclude hashedPassword
-      },
-    })
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: validatedData.email },
+      })
 
-    return NextResponse.json(user, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ errors: error.errors }, { status: 400 })
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'User with this email already exists' },
+          { status: 400 }
+        )
+      }
+
+      // Hash the password
+      const hashedPassword = await hash(validatedData.password, 12)
+
+      // Create the user
+      const user = await prisma.user.create({
+        data: {
+          ...validatedData,
+          hashedPassword,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      })
+
+      // If permissions are provided, create role permissions
+      if (body.permissions && Array.isArray(body.permissions)) {
+        await prisma.rolePermission.createMany({
+          data: body.permissions.map((permissionId: string) => ({
+            userId: user.id,
+            permissionId,
+          })),
+        })
+      }
+
+      return NextResponse.json(user, { status: 201 })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json({ errors: error.errors }, { status: 400 })
+      }
+      console.error('Error creating user:', error)
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      )
     }
-    console.error('Error creating user:', error)
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { action: 'CREATE', subject: 'user' }
+)
 
 export async function PUT(req: Request) {
   try {
