@@ -6,13 +6,11 @@ import { withPermission } from "@/lib/permissions"
 export const GET = withPermission(
   async function GET() {
     try {
-      // Fetch all room types ordered by creation date
       const roomTypes = await prisma.roomType.findMany({
         orderBy: {
           createdAt: "desc",
         },
       })
-
       return NextResponse.json(roomTypes)
     } catch (error) {
       console.error("Error fetching room types:", error)
@@ -22,7 +20,7 @@ export const GET = withPermission(
       )
     }
   },
-  { action: "READ", subject: "roomType" } // Permission for reading room types
+  { action: "READ", subject: "roomType" }
 )
 
 // POST: Create a new room type
@@ -32,17 +30,33 @@ export const POST = withPermission(
       // Parse the request body
       const json = await request.json()
 
+      // Convert string values to numbers and validate
+      const adultCapacity = parseInt(json.adultCapacity)
+      const childCapacity = parseInt(json.childCapacity)
+      const basePrice = parseFloat(json.basePrice)
+      const extraBedPrice = parseFloat(json.extraBedPrice)
+
       // Validate the required fields
+      if (!json.name || !json.description) {
+        return NextResponse.json(
+          { error: "Name and description are required" },
+          { status: 400 }
+        )
+      }
+
+      // Validate numeric fields
       if (
-        !json.name ||
-        !json.description ||
-        typeof json.adultCapacity !== "number" ||
-        typeof json.childCapacity !== "number" ||
-        typeof json.basePrice !== "number" ||
-        typeof json.extraBedPrice !== "number"
+        isNaN(adultCapacity) ||
+        isNaN(childCapacity) ||
+        isNaN(basePrice) ||
+        isNaN(extraBedPrice) ||
+        adultCapacity < 1 ||
+        childCapacity < 0 ||
+        basePrice < 0 ||
+        extraBedPrice < 0
       ) {
         return NextResponse.json(
-          { error: "Invalid data provided" },
+          { error: "Invalid numeric values provided" },
           { status: 400 }
         )
       }
@@ -52,10 +66,10 @@ export const POST = withPermission(
         data: {
           name: json.name,
           description: json.description,
-          adultCapacity: json.adultCapacity,
-          childCapacity: json.childCapacity,
-          basePrice: json.basePrice,
-          extraBedPrice: json.extraBedPrice,
+          adultCapacity,
+          childCapacity,
+          basePrice,
+          extraBedPrice,
         },
       })
 
@@ -68,5 +82,5 @@ export const POST = withPermission(
       )
     }
   },
-  { action: "CREATE", subject: "roomType" } // Permission for creating room types
+  { action: "CREATE", subject: "roomType" }
 )

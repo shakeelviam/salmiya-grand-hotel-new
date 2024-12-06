@@ -21,83 +21,70 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
-  interface JWT {
-    user?: {
-      id: string
-      email: string
-      name: string
-      role: string
-    }
-  }
-}
-
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email and password are required')
         }
 
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email }
-          })
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          include: {
+            roles: true,
+          },
+        })
 
-          if (!user || !user.hashedPassword) {
-            throw new Error('Invalid credentials')
-          }
-
-          const isPasswordValid = await compare(credentials.password, user.hashedPassword)
-
-          if (!isPasswordValid) {
-            throw new Error('Invalid credentials')
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          }
-        } catch (error) {
-          console.error('Auth error:', error)
-          throw new Error('Authentication failed')
+        if (!user) {
+          throw new Error('No user found with the provided email')
         }
-      }
-    })
+
+        const isPasswordValid = await compare(credentials.password, user.password || '')
+        if (!isPasswordValid) {
+          throw new Error('Invalid password')
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.roles[0]?.name || 'STAFF',
+        }
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.user = {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role
-        }
+        token.id = user.id
+        token.role = user.role
       }
       return token
     },
     async session({ session, token }) {
-      if (token.user) {
-        session.user = token.user
+      if (session.user) {
+        session.user.id = token.id as string
+        session.user.role = token.role as string
       }
       return session
-    }
+    },
   },
   pages: {
     signIn: '/auth/login',
     error: '/auth/error',
   },
-  debug: process.env.NODE_ENV === 'development',
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
-const handler = NextAuth(authOptions)
+export const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }

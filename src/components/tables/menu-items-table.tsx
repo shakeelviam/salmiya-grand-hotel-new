@@ -9,16 +9,15 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { formatKWD } from "@/lib/currency"
-import { getERPNextDocs } from "@/lib/erpnext"
 
 interface MenuItem {
+  id: string
   name: string
-  item_name: string
-  description: string
-  standard_rate: string
+  description: string | null
+  price: number
   category: string
-  is_active: boolean
-  image?: string
+  imageUrl: string | null
+  isActive: boolean
 }
 
 export function MenuItemsTable() {
@@ -28,11 +27,9 @@ export function MenuItemsTable() {
   useEffect(() => {
     const fetchMenuItems = async () => {
       try {
-        const response = await getERPNextDocs("Item", {
-          filters: [["item_group", "=", "Room Service"]],
-          fields: ["name", "item_name", "description", "standard_rate", "category", "is_active", "image"],
-        })
-        setMenuItems(response)
+        const response = await fetch("/api/menu-items")
+        const data = await response.json()
+        setMenuItems(data)
       } catch (error) {
         console.error("Error fetching menu items:", error)
       } finally {
@@ -60,18 +57,18 @@ export function MenuItemsTable() {
       </TableHeader>
       <TableBody>
         {menuItems.map((item) => (
-          <TableRow key={item.name}>
-            <TableCell className="font-medium">{item.item_name}</TableCell>
+          <TableRow key={item.id}>
+            <TableCell className="font-medium">{item.name}</TableCell>
             <TableCell>{item.description}</TableCell>
-            <TableCell>{formatKWD(parseFloat(item.standard_rate))}</TableCell>
+            <TableCell>{formatKWD(item.price)}</TableCell>
             <TableCell>
-              <Badge variant={item.category === "Food" ? "default" : "secondary"}>
+              <Badge variant="default">
                 {item.category}
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={item.is_active ? "success" : "destructive"}>
-                {item.is_active ? "Active" : "Inactive"}
+              <Badge variant={item.isActive ? "success" : "destructive"}>
+                {item.isActive ? "Active" : "Inactive"}
               </Badge>
             </TableCell>
           </TableRow>

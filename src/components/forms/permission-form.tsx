@@ -23,64 +23,63 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { Permission } from "@/hooks/use-permissions"
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
+const permissionSchema = z.object({
+  name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  action: z.enum(["CREATE", "READ", "UPDATE", "DELETE"]),
-  subject: z.string().min(1, {
-    message: "Subject is required.",
+  action: z.enum(["CREATE", "READ", "UPDATE", "DELETE"], {
+    required_error: "Action is required",
   }),
+  subject: z.string().min(1, "Subject is required"),
 })
 
 type PermissionFormProps = {
-  permission?: Permission
   onSuccess?: () => void
+  permission?: {
+    id: string
+    name: string
+    description: string | null
+    action: string
+    subject: string
+  }
 }
 
-export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
+export function PermissionForm({ onSuccess, permission }: PermissionFormProps) {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof permissionSchema>>({
+    resolver: zodResolver(permissionSchema),
     defaultValues: {
       name: permission?.name || "",
       description: permission?.description || "",
-      action: permission?.action || "READ",
+      action: permission?.action as "CREATE" | "READ" | "UPDATE" | "DELETE" || "READ",
       subject: permission?.subject || "",
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof permissionSchema>) {
     try {
       setLoading(true)
-      const url = permission
-        ? `/api/permissions/${permission.id}`
-        : "/api/permissions"
-      const method = permission ? "PUT" : "POST"
+      const url = permission ? `/api/permissions/${permission.id}` : '/api/permissions'
+      const method = permission ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
         method,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(values),
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to save permission")
+        throw new Error(error.message || 'Failed to save permission')
       }
 
       toast({
         title: permission ? "Permission Updated" : "Permission Created",
-        description: `${values.name} has been ${
-          permission ? "updated" : "created"
-        } successfully.`,
+        description: `${values.name} has been ${permission ? 'updated' : 'created'} successfully.`
       })
 
       if (onSuccess) {
@@ -107,7 +106,7 @@ export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input placeholder="View Users" {...field} />
+                <Input placeholder="create:users" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -121,9 +120,10 @@ export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Permission to view user list"
-                  {...field}
+                <Textarea 
+                  placeholder="Allows creating new users" 
+                  {...field} 
+                  value={field.value || ''}
                 />
               </FormControl>
               <FormMessage />
@@ -137,10 +137,7 @@ export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Action</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select an action" />
@@ -165,7 +162,7 @@ export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
             <FormItem>
               <FormLabel>Subject</FormLabel>
               <FormControl>
-                <Input placeholder="user" {...field} />
+                <Input placeholder="users" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -173,11 +170,7 @@ export function PermissionForm({ permission, onSuccess }: PermissionFormProps) {
         />
 
         <Button type="submit" disabled={loading}>
-          {loading
-            ? "Saving..."
-            : permission
-            ? "Update Permission"
-            : "Create Permission"}
+          {loading ? "Saving..." : (permission ? "Update Permission" : "Create Permission")}
         </Button>
       </form>
     </Form>

@@ -2,6 +2,58 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { withPermission } from '@/lib/permissions'
 import { hash } from 'bcryptjs'
+import { z } from 'zod'
+
+// Create initial admin user
+async function createInitialAdmin() {
+  const existingAdmin = await prisma.user.findFirst({
+    where: { 
+      email: 'shakeel.viam@gmail.com',
+      roles: {
+        some: {
+          name: 'ADMIN'
+        }
+      }
+    },
+    include: {
+      roles: true
+    }
+  })
+
+  if (!existingAdmin) {
+    // First, create the ADMIN role if it doesn't exist
+    const adminRole = await prisma.role.upsert({
+      where: { name: 'ADMIN' },
+      update: {},
+      create: {
+        name: 'ADMIN',
+        description: 'Administrator role with full access'
+      }
+    })
+
+    const hashedPassword = await hash('Marsha@2003', 12)
+    
+    // Create the admin user with the ADMIN role
+    await prisma.user.create({
+      data: {
+        email: 'shakeel.viam@gmail.com',
+        name: 'Shakeel',
+        password: hashedPassword,
+        roles: {
+          connect: {
+            id: adminRole.id
+          }
+        }
+      },
+    })
+
+    console.log('Created initial admin user')
+  }
+}
+
+// Call this when the server starts
+createInitialAdmin()
+  .catch(console.error)
 
 // Validation schema for user
 const userSchema = z.object({
@@ -15,36 +67,23 @@ const userSchema = z.object({
 export const GET = withPermission(
   async function GET(req: Request) {
     try {
-      const { searchParams } = new URL(req.url)
-      const role = searchParams.get('role')
-      const email = searchParams.get('email')
-
-      const where = {
-        ...(role && { role: role as 'ADMIN' | 'MANAGER' | 'STAFF' }),
-        ...(email && { email }),
-      }
-
       const users = await prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-          rolePermissions: {
-            include: {
-              permission: true,
-            },
-          },
+        include: {
+          roles: true
         },
         orderBy: {
           createdAt: 'desc',
         },
       })
 
-      return NextResponse.json(users)
+      return NextResponse.json(users.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.roles[0]?.name || 'STAFF',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })))
     } catch (error) {
       console.error('Error fetching users:', error)
       return NextResponse.json(
@@ -53,19 +92,19 @@ export const GET = withPermission(
       )
     }
   },
-  { action: 'READ', subject: 'user' }
+  { action: "READ", subject: "user" }
 )
 
 // POST: Create a new user
 export const POST = withPermission(
   async function POST(req: Request) {
     try {
-      const body = await req.json()
-      const validatedData = userSchema.parse(body)
+      const json = await req.json()
+      const data = userSchema.parse(json)
 
-      // Check if user already exists
+      // Check if user with email already exists
       const existingUser = await prisma.user.findUnique({
-        where: { email: validatedData.email },
+        where: { email: data.email },
       })
 
       if (existingUser) {
@@ -75,41 +114,50 @@ export const POST = withPermission(
         )
       }
 
-      // Hash the password
-      const hashedPassword = await hash(validatedData.password, 12)
-
-      // Create the user
-      const user = await prisma.user.create({
-        data: {
-          ...validatedData,
-          hashedPassword,
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+      // Get or create the role
+      const role = await prisma.role.upsert({
+        where: { name: data.role },
+        update: {},
+        create: {
+          name: data.role,
+          description: `${data.role} role`
+        }
       })
 
-      // If permissions are provided, create role permissions
-      if (body.permissions && Array.isArray(body.permissions)) {
-        await prisma.rolePermission.createMany({
-          data: body.permissions.map((permissionId: string) => ({
-            userId: user.id,
-            permissionId,
-          })),
-        })
-      }
+      // Hash the password
+      const hashedPassword = await hash(data.password, 12)
 
-      return NextResponse.json(user, { status: 201 })
+      // Create the user with the role
+      const user = await prisma.user.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          password: hashedPassword,
+          roles: {
+            connect: {
+              id: role.id
+            }
+          }
+        },
+        include: {
+          roles: true
+        }
+      })
+
+      return NextResponse.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.roles[0]?.name || 'STAFF',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return NextResponse.json({ errors: error.errors }, { status: 400 })
+        return NextResponse.json(
+          { error: error.errors[0].message },
+          { status: 400 }
+        )
       }
       console.error('Error creating user:', error)
       return NextResponse.json(
@@ -118,7 +166,7 @@ export const POST = withPermission(
       )
     }
   },
-  { action: 'CREATE', subject: 'user' }
+  { action: "CREATE", subject: "user" }
 )
 
 export async function PUT(req: Request) {
@@ -155,8 +203,7 @@ export async function PUT(req: Request) {
 
     // If updating password, hash it
     if (validatedData.password) {
-      validatedData.hashedPassword = await hash(validatedData.password, 12)
-      delete validatedData.password
+      validatedData.password = await hash(validatedData.password, 12)
     }
 
     const user = await prisma.user.update({

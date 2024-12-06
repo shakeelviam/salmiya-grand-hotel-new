@@ -35,6 +35,8 @@ export default function AuthErrorPage() {
       Configuration: 'There is a problem with the server configuration.',
       AccessDenied: 'Access denied. You do not have permission to access this resource.',
       Verification: 'The verification failed or the token has expired.',
+      CredentialsSignin: 'Invalid email or password.',
+      AccountLocked: 'Your account is locked. Please contact support.',
       Default: 'An authentication error occurred. Please try again.',
     }
 
@@ -47,7 +49,7 @@ export default function AuthErrorPage() {
         <CardHeader>
           <CardTitle>Authentication Error</CardTitle>
           <CardDescription>
-            There was a problem authenticating your account
+            There was a problem authenticating your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -58,12 +60,19 @@ export default function AuthErrorPage() {
             {getErrorMessage(error || 'Default')}
           </p>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-4">
           <Button
             className="w-full"
             onClick={() => router.push('/auth/login')}
           >
             Try Again
+          </Button>
+          <Button
+            className="w-full"
+            variant="secondary"
+            onClick={() => router.push('/auth/help')}
+          >
+            Contact Support
           </Button>
         </CardFooter>
       </Card>

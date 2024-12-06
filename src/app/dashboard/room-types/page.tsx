@@ -1,16 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { RoomTypeForm } from "@/components/forms/room-type-form"
 import {
   Table,
   TableBody,
@@ -19,8 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
-import { formatCurrency } from "@/lib/utils"
+import { RoomTypeForm } from "@/components/forms/room-type-form"
 
 type RoomType = {
   id: string
@@ -37,101 +36,66 @@ type RoomType = {
 export default function RoomTypesPage() {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedRoomType, setSelectedRoomType] = useState<RoomType | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const router = useRouter()
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchRoomTypes()
-  }, [])
-
-  async function fetchRoomTypes() {
+  const fetchRoomTypes = async () => {
     try {
-      const response = await fetch("/api/room-types")
-      if (!response.ok) {
-        throw new Error("Failed to fetch room types")
-      }
+      setLoading(true)
+      const response = await fetch('/api/room-types')
+      if (!response.ok) throw new Error('Failed to fetch room types')
       const data = await response.json()
       setRoomTypes(data)
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error fetching room types:', error)
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch room types",
-        variant: "destructive",
+        description: "Failed to fetch room types",
+        variant: "destructive"
       })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this room type?")) {
-      return
-    }
+  useEffect(() => {
+    fetchRoomTypes()
+  }, [])
 
-    try {
-      const response = await fetch(`/api/room-types/${id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to delete room type")
-      }
-
-      toast({
-        title: "Success",
-        description: "Room type deleted successfully",
-      })
-
-      fetchRoomTypes()
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete room type",
-        variant: "destructive",
-      })
-    }
-  }
-
-  function handleEdit(roomType: RoomType) {
-    setSelectedRoomType(roomType)
-    setDialogOpen(true)
-  }
-
-  function handleDialogClose() {
-    setSelectedRoomType(null)
-    setDialogOpen(false)
+  const handleRoomTypeCreated = () => {
+    setIsDialogOpen(false)
     fetchRoomTypes()
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    )
   }
 
   return (
     <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Room Types</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Add Room Type</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Room Type
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                {selectedRoomType ? "Edit Room Type" : "Add Room Type"}
-              </DialogTitle>
+              <DialogTitle>Create New Room Type</DialogTitle>
             </DialogHeader>
-            <RoomTypeForm
-              roomType={selectedRoomType || undefined}
-              onSuccess={handleDialogClose}
-            />
+            <RoomTypeForm onSuccess={handleRoomTypeCreated} />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
+      <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
@@ -141,7 +105,6 @@ export default function RoomTypesPage() {
               <TableHead>Child Capacity</TableHead>
               <TableHead>Base Price</TableHead>
               <TableHead>Extra Bed Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -151,24 +114,8 @@ export default function RoomTypesPage() {
                 <TableCell>{roomType.description}</TableCell>
                 <TableCell>{roomType.adultCapacity}</TableCell>
                 <TableCell>{roomType.childCapacity}</TableCell>
-                <TableCell>{formatCurrency(roomType.basePrice)}</TableCell>
-                <TableCell>{formatCurrency(roomType.extraBedPrice)}</TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(roomType)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(roomType.id)}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
+                <TableCell>${roomType.basePrice.toFixed(2)}</TableCell>
+                <TableCell>${roomType.extraBedPrice.toFixed(2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -11,27 +11,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { UserForm } from "@/components/forms/user-form"
 
 type User = {
   id: string
   name: string
   email: string
-  role: "ADMIN" | "MANAGER" | "STAFF"
+  role: string
   createdAt: string
   updatedAt: string
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { toast } = useToast()
 
   const fetchUsers = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/users')
       if (!response.ok) throw new Error('Failed to fetch users')
       const data = await response.json()
@@ -43,6 +51,8 @@ export default function UsersPage() {
         description: "Failed to fetch users",
         variant: "destructive"
       })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -50,20 +60,30 @@ export default function UsersPage() {
     fetchUsers()
   }, [])
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'destructive'
-      case 'MANAGER':
-        return 'default'
-      default:
-        return 'secondary'
-    }
-  }
-
   const handleUserCreated = () => {
     setIsDialogOpen(false)
     fetchUsers()
+  }
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role.toUpperCase()) {
+      case 'ADMIN':
+        return 'bg-red-100 text-red-800'
+      case 'MANAGER':
+        return 'bg-blue-100 text-blue-800'
+      case 'STAFF':
+        return 'bg-green-100 text-green-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    )
   }
 
   return (
@@ -77,7 +97,10 @@ export default function UsersPage() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+            </DialogHeader>
             <UserForm onSuccess={handleUserCreated} />
           </DialogContent>
         </Dialog>
@@ -97,22 +120,23 @@ export default function UsersPage() {
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
+                <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <Badge variant={getRoleBadgeVariant(user.role)}>
+                  <Badge 
+                    variant="secondary"
+                    className={getRoleBadgeColor(user.role)}
+                  >
                     {user.role}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </TableCell>
+                <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      // Handle edit user
+                      // Handle edit
                     }}
                   >
                     Edit

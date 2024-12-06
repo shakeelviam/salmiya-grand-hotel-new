@@ -1,118 +1,123 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { z } from "zod"
 import { prisma } from "@/lib/db"
-import { withPermission } from "@/lib/permissions"
+import { authOptions } from "@/lib/auth"
 
-// GET: Fetch a specific permission
-export const GET = withPermission(
-  async function GET(
-    request: Request,
-    { params }: { params: { id: string } }
-  ) {
-    try {
-      const permission = await prisma.permission.findUnique({
-        where: { id: params.id },
-      })
+const permissionSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  action: z.enum(["CREATE", "READ", "UPDATE", "DELETE"], {
+    required_error: "Action is required",
+  }),
+  subject: z.string().min(1, "Subject is required"),
+})
 
-      if (!permission) {
-        return NextResponse.json(
-          { error: "Permission not found" },
-          { status: 404 }
-        )
-      }
-
-      return NextResponse.json(permission)
-    } catch (error) {
-      console.error("Error fetching permission:", error)
-      return NextResponse.json(
-        { error: "Failed to fetch permission" },
-        { status: 500 }
-      )
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
-  },
-  { action: "READ", subject: "permission" }
-)
 
-// PUT: Update a permission
-export const PUT = withPermission(
-  async function PUT(
-    request: Request,
-    { params }: { params: { id: string } }
-  ) {
-    try {
-      const json = await request.json()
+    if (!params.id) {
+      return new NextResponse("Permission id is required", { status: 400 })
+    }
 
-      // Validate required fields
-      if (!json.name || !json.action || !json.subject) {
-        return NextResponse.json(
-          { error: "Missing required fields" },
-          { status: 400 }
-        )
-      }
+    const permission = await prisma.permission.findUnique({
+      where: {
+        id: params.id,
+      },
+    })
 
-      // Check if another permission exists with the same action and subject
-      const existingPermission = await prisma.permission.findFirst({
-        where: {
-          action: json.action,
-          subject: json.subject,
-          NOT: { id: params.id },
+    return NextResponse.json(permission)
+  } catch (error) {
+    console.error("[PERMISSION_GET]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const body = await req.json()
+    const validatedFields = permissionSchema.safeParse(body)
+
+    if (!validatedFields.success) {
+      return new NextResponse("Invalid fields", { status: 400 })
+    }
+
+    if (!params.id) {
+      return new NextResponse("Permission id is required", { status: 400 })
+    }
+
+    const { name, description, action, subject } = validatedFields.data
+
+    const existingPermission = await prisma.permission.findFirst({
+      where: {
+        name,
+        NOT: {
+          id: params.id,
         },
-      })
+      },
+    })
 
-      if (existingPermission) {
-        return NextResponse.json(
-          { error: "Permission with this action and subject already exists" },
-          { status: 400 }
-        )
-      }
-
-      // Update the permission
-      const permission = await prisma.permission.update({
-        where: { id: params.id },
-        data: {
-          name: json.name,
-          description: json.description,
-          action: json.action,
-          subject: json.subject,
-        },
-      })
-
-      return NextResponse.json(permission)
-    } catch (error) {
-      console.error("Error updating permission:", error)
-      return NextResponse.json(
-        { error: "Failed to update permission" },
-        { status: 500 }
-      )
+    if (existingPermission) {
+      return new NextResponse("Permission already exists", { status: 400 })
     }
-  },
-  { action: "UPDATE", subject: "permission" }
-)
 
-// DELETE: Delete a permission
-export const DELETE = withPermission(
-  async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
-  ) {
-    try {
-      // Delete all role permissions first
-      await prisma.rolePermission.deleteMany({
-        where: { permissionId: params.id },
-      })
+    const permission = await prisma.permission.update({
+      where: {
+        id: params.id,
+      },
+      data: {
+        name,
+        description,
+        action,
+        subject,
+      },
+    })
 
-      // Delete the permission
-      await prisma.permission.delete({
-        where: { id: params.id },
-      })
+    return NextResponse.json(permission)
+  } catch (error) {
+    console.error("[PERMISSION_PUT]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
 
-      return NextResponse.json({ message: "Permission deleted successfully" })
-    } catch (error) {
-      console.error("Error deleting permission:", error)
-      return NextResponse.json(
-        { error: "Failed to delete permission" },
-        { status: 500 }
-      )
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
-  },
-  { action: "DELETE", subject: "permission" }
-)
+
+    if (!params.id) {
+      return new NextResponse("Permission id is required", { status: 400 })
+    }
+
+    const permission = await prisma.permission.delete({
+      where: {
+        id: params.id,
+      },
+    })
+
+    return NextResponse.json(permission)
+  } catch (error) {
+    console.error("[PERMISSION_DELETE]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}

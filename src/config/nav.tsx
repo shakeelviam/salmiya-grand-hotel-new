@@ -19,12 +19,19 @@ import {
   BedSingle,
   Key,
   Shield,
+  List,
 } from "lucide-react"
 
 export const navItems = [
   {
     title: "Overview",
     items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        description: "Overview of hotel operations",
+      },
       {
         title: "Analytics",
         href: "/dashboard/analytics",
@@ -60,6 +67,11 @@ export const navItems = [
         icon: Users,
         description: "Guest information and history",
       },
+    ],
+  },
+  {
+    title: "Food & Beverage",
+    items: [
       {
         title: "Restaurant",
         href: "/dashboard/restaurant",
@@ -69,8 +81,14 @@ export const navItems = [
       {
         title: "Menu Items",
         href: "/dashboard/menu-items",
-        icon: Coffee,
+        icon: Utensils,
         description: "Manage room service menu items",
+      },
+      {
+        title: "Menu Categories",
+        href: "/dashboard/menu-categories",
+        icon: List,
+        description: "Manage menu categories",
       },
       {
         title: "Kitchen Orders",
@@ -81,25 +99,25 @@ export const navItems = [
     ],
   },
   {
-    title: "User Management",
+    title: "Administration",
     items: [
       {
         title: "Users",
         href: "/dashboard/users",
         icon: UserCircle,
-        description: "Manage system users and their access",
+        description: "System users and access",
       },
       {
         title: "Roles",
         href: "/dashboard/roles",
         icon: Shield,
-        description: "Define roles and their permissions",
+        description: "Role management",
       },
       {
-        title: "Permissions",
-        href: "/dashboard/permissions",
+        title: "Role Permissions",
+        href: "/dashboard/role-permissions",
         icon: Key,
-        description: "Assign permissions to roles",
+        description: "Role-based permission management",
       },
     ],
   },

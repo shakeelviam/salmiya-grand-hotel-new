@@ -1,344 +1,175 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { MenuItemForm } from "@/components/forms/menu-item-form"
+import { MenuItemCard } from "@/components/cards/menu-item-card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { Upload } from "lucide-react"
-import { formatKWD } from "@/lib/currency"
-import { Badge } from "@/components/ui/badge"
-
-const menuItemSchema = z.object({
-  name: z.string().min(1, "Item name is required"),
-  description: z.string().optional(),
-  price: z.string().refine(
-    (val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0,
-    "Price must be a valid number"
-  ),
-  category: z.string().min(1, "Category is required"),
-  isActive: z.boolean().default(true),
-  image: z.any().optional()
-})
 
 type MenuItem = {
   id: string
   name: string
   description: string | null
   price: number
-  category: string
+  categoryId: string
   imageUrl: string | null
   isActive: boolean
 }
 
+type Category = {
+  id: string
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
 export default function MenuItemsPage() {
-  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const { toast } = useToast()
-
-  const form = useForm<z.infer<typeof menuItemSchema>>({
-    resolver: zodResolver(menuItemSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      price: "0.000",
-      category: "Food",
-      isActive: true,
-    }
-  })
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-      form.setValue("image", e.target.files)
-    }
-  }
 
   const fetchMenuItems = async () => {
     try {
-      const response = await fetch('/api/menu-items')
-      if (!response.ok) throw new Error('Failed to fetch menu items')
-      const data = await response.json()
-      setMenuItems(data)
+      const url = new URL("/api/menu-items", window.location.origin)
+      if (selectedCategory && selectedCategory !== "all") {
+        url.searchParams.append("category", selectedCategory)
+      }
+      
+      const response = await fetch(url.toString(), {
+        credentials: "include",
+      })
+      const result = await response.json()
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Please sign in to view menu items")
+        }
+        throw new Error(result.error || "Failed to fetch menu items")
+      }
+      
+      setMenuItems(result.data || [])
     } catch (error) {
-      console.error('Error fetching menu items:', error)
+      const message = error instanceof Error ? error.message : "Failed to load menu items"
       toast({
         title: "Error",
-        description: "Failed to fetch menu items",
-        variant: "destructive"
+        description: message,
+        variant: "destructive",
       })
     }
   }
 
   useEffect(() => {
-    fetchMenuItems()
-  }, [])
-
-  const onSubmit = async (values: z.infer<typeof menuItemSchema>) => {
-    try {
-      setLoading(true)
-      
-      // First upload image if exists
-      let imageUrl = null
-      if (values.image && values.image[0]) {
-        const formData = new FormData()
-        formData.append("file", values.image[0])
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: formData
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/menu-categories", {
+          credentials: "include",
         })
-        if (!uploadResponse.ok) throw new Error("Failed to upload image")
-        const uploadData = await uploadResponse.json()
-        imageUrl = uploadData.file_url
+        const result = await response.json()
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Please sign in to view categories")
+          }
+          throw new Error(result.error || "Failed to fetch categories")
+        }
+        
+        setCategories(result.data || [])
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load categories"
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        })
       }
-
-      // Create menu item
-      const response = await fetch('/api/menu-items', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...values,
-          price: parseFloat(values.price),
-          imageUrl,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to create menu item')
-      }
-
-      toast({
-        title: "Menu Item Created",
-        description: `${values.name} has been added to the menu.`
-      })
-
-      form.reset()
-      setImagePreview(null)
-      fetchMenuItems()
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create menu item",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
     }
-  }
 
-  const toggleItemStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/menu-items?id=${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          isActive: !currentStatus,
-        }),
-      })
+    fetchCategories()
+  }, [toast])
 
-      if (!response.ok) throw new Error('Failed to update menu item')
-      
-      fetchMenuItems()
-      toast({
-        title: "Status Updated",
-        description: `Menu item has been ${!currentStatus ? 'activated' : 'deactivated'}.`
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update menu item status",
-        variant: "destructive"
-      })
-    }
-  }
+  useEffect(() => {
+    fetchMenuItems()
+  }, [selectedCategory, toast])
 
   return (
     <div className="container mx-auto py-10">
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Menu Item</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Chicken Burger" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Grilled chicken with fresh vegetables..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price (KWD)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Image</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-col items-center gap-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById("image-upload")?.click()}
-                            className="w-full"
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Image
-                          </Button>
-                          <input
-                            id="image-upload"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleImageChange}
-                            {...field}
-                          />
-                          {imagePreview && (
-                            <div className="relative w-40 h-40">
-                              <img
-                                src={imagePreview}
-                                alt="Preview"
-                                className="w-full h-full object-cover rounded-md"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Creating..." : "Create Menu Item"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Menu Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {menuItems.map((item) => (
-                <Card key={item.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{item.name}</h3>
-                        <p className="text-sm text-gray-500">{item.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">{formatKWD(item.price)}</p>
-                        <Badge variant={item.isActive ? "default" : "secondary"}>
-                          {item.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                    </div>
-                    {item.imageUrl && (
-                      <div className="mt-4">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-48 object-cover rounded-md"
-                        />
-                      </div>
-                    )}
-                    <div className="mt-4 flex justify-between items-center">
-                      <Badge variant="outline">{item.category}</Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleItemStatus(item.id, item.isActive)}
-                      >
-                        {item.isActive ? "Deactivate" : "Activate"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Menu Items</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage your menu items here
+          </p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <Select 
+            value={selectedCategory || "all"} 
+            onValueChange={setSelectedCategory}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem 
+                  key={category.id} 
+                  value={category.id}
+                >
+                  {category.name}
+                </SelectItem>
               ))}
-            </div>
-          </CardContent>
-        </Card>
+            </SelectContent>
+          </Select>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create Menu Item</DialogTitle>
+                <DialogDescription>
+                  Add a new item to your menu
+                </DialogDescription>
+              </DialogHeader>
+              <MenuItemForm 
+                setOpen={setOpen} 
+                categories={categories} 
+                onSuccess={fetchMenuItems}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {menuItems.map((item) => (
+          <MenuItemCard 
+            key={item.id} 
+            item={item} 
+            category={categories.find(c => c.id === item.categoryId)?.name || ""}
+          />
+        ))}
       </div>
     </div>
   )

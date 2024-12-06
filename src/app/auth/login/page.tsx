@@ -49,6 +49,12 @@ export default function LoginPage() {
       }
 
       if (response.error) {
+        if (response.error === 'Invalid credentials') {
+          throw new Error('Invalid email or password. Please try again.')
+        }
+        if (response.error === 'Account locked') {
+          throw new Error('Your account is locked. Please contact support.')
+        }
         throw new Error(response.error)
       }
 
@@ -62,7 +68,7 @@ export default function LoginPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Invalid credentials',
+        description: error instanceof Error ? error.message : 'Authentication failed',
         variant: 'destructive',
       })
     } finally {
@@ -136,6 +142,13 @@ export default function LoginPage() {
               </form>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
+              <Button 
+                variant="link" 
+                className="w-full text-center text-sm"
+                onClick={() => router.push('/auth/reset-password')}
+              >
+                Forgot Password?
+              </Button>
               <div className="text-sm text-muted-foreground text-center">
                 This is a secure area. Only authorized personnel can access.
               </div>

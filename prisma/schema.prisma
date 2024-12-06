@@ -1,222 +1,191 @@
-// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  STAFF
-}
-
-enum PermissionAction {
-  CREATE
-  READ
-  UPDATE
-  DELETE
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id              String    @id @default(cuid())
-  name            String
-  email           String    @unique
-  hashedPassword  String
-  role            UserRole  @default(STAFF)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  reservations    Reservation[]
-  payments        Payment[]
-  rolePermissions RolePermission[]
+  id                String              @id @default(cuid())
+  name              String?
+  email             String?             @unique
+  emailVerified     DateTime?
+  image             String?
+  password          String?
+  accounts          Account[]
+  payments          Payment[]
+  permissionHistory PermissionHistory[]
+  reservations      Reservation[]
+  rolePermissions   RolePermission[]
+  sessions          Session[]
+  roles             Role[]              @relation("RoleToUser")
 }
 
-model Guest {
-  id            String    @id @default(cuid())
-  firstName     String
-  lastName      String
-  email         String    @unique
-  phone         String
-  address       String?
-  nationality   String?
-  idType        String?   // Passport, National ID, etc.
-  idNumber      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  reservations  Reservation[]
-  payments      Payment[]
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  permissions Permission[] @relation("PermissionToRole")
+  users       User[]       @relation("RoleToUser")
 }
 
 model Permission {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  description String?
-  action      PermissionAction
-  subject     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  subject         String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  action          String
   rolePermissions RolePermission[]
+  roles           Role[]           @relation("PermissionToRole")
 }
 
 model RolePermission {
   id           String     @id @default(cuid())
-  user         User       @relation(fields: [userId], references: [id])
   userId       String
-  permission   Permission @relation(fields: [permissionId], references: [id])
   permissionId String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
 
   @@unique([userId, permissionId])
 }
 
-model RoomType {
-  id            String   @id @default(uuid())
-  name          String
-  description   String
-  adultCapacity Int
-  childCapacity Int
-  basePrice     Float
-  extraBedPrice Float
-  isActive      Boolean  @default(true) // New field for enabling/disabling room types
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  rooms         Room[]
-
-  @@map("room_types")
+model PermissionHistory {
+  id        String   @id @default(cuid())
+  roleId    String
+  userId    String
+  action    String
+  createdAt DateTime @default(now())
+  details   String?
+  user      User     @relation(fields: [userId], references: [id])
 }
 
-
 model Room {
-  id          String        @id @default(cuid())
-  number      String        @unique
-  floor       String
-  status      RoomStatus    @default(AVAILABLE)
-  roomTypeId  String
-  roomType    RoomType      @relation(fields: [roomTypeId], references: [id])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  number       String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  description  String?
+  isActive     Boolean       @default(true)
+  price        Float
+  type         String
   reservations Reservation[]
 }
 
 model Reservation {
-  id            String    @id @default(cuid())
-  guestId       String
-  guest         Guest     @relation(fields: [guestId], references: [id])
-  roomId        String
-  room          Room      @relation(fields: [roomId], references: [id])
-  checkIn       DateTime
-  checkOut      DateTime
-  status        ReservationStatus @default(PENDING)
-  totalAmount   Decimal   @db.Decimal(10, 2)
-  notes         String?
-  createdById   String
-  createdBy     User      @relation(fields: [createdById], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  payments      Payment[]
-  orders        Order[]
+  id          String    @id @default(cuid())
+  roomId      String
+  checkIn     DateTime
+  checkOut    DateTime
+  totalAmount Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  status      String
+  orders      Order[]
+  payments    Payment[]
+  room        Room      @relation(fields: [roomId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id            String      @id @default(cuid())
+  amount        Float
+  reservationId String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  userId        String
+  method        String
+  status        String
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+model MenuCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  menuItems   MenuItem[]
 }
 
 model MenuItem {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   description String?
-  price       Decimal   @db.Decimal(10, 2)
-  category    String
+  price       Float
   imageUrl    String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  categoryId  String
+  category    MenuCategory @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
 }
 
 model Order {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   reservationId String?
-  reservation   Reservation? @relation(fields: [reservationId], references: [id])
   roomNumber    String?
-  status        OrderStatus @default(PENDING)
-  totalAmount   Decimal     @db.Decimal(10, 2)
-  notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  totalAmount   Float
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  status        String
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
   items         OrderItem[]
-  payment       Payment?
 }
 
 model OrderItem {
-  id          String    @id @default(cuid())
-  orderId     String
-  order       Order     @relation(fields: [orderId], references: [id])
-  menuItemId  String
-  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
-  quantity    Int
-  price       Decimal   @db.Decimal(10, 2)
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Payment {
-  id              String          @id @default(cuid())
-  amount          Decimal         @db.Decimal(10, 2)
-  method          PaymentMethod
-  status          PaymentStatus   @default(PENDING)
-  reservationId   String?
-  reservation     Reservation?    @relation(fields: [reservationId], references: [id])
-  orderId         String?        @unique
-  order           Order?         @relation(fields: [orderId], references: [id])
-  guestId         String
-  guest           Guest          @relation(fields: [guestId], references: [id])
-  processedById   String
-  processedBy     User           @relation(fields: [processedById], references: [id])
-  transactionId   String?
-  receiptUrl      String?
-  notes           String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-}
-
-enum RoomStatus {
-  AVAILABLE
-  OCCUPIED
-  MAINTENANCE
-  CLEANING
-}
-
-enum ReservationStatus {
-  PENDING
-  CONFIRMED
-  CHECKED_IN
-  CHECKED_OUT
-  CANCELLED
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PREPARING
-  READY
-  DELIVERED
-  CANCELLED
-}
-
-enum PaymentMethod {
-  CASH
-  CREDIT_CARD
-  DEBIT_CARD
-  BANK_TRANSFER
-  MOBILE_PAYMENT
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
+  id         String   @id @default(cuid())
+  orderId    String
+  menuItemId String
+  quantity   Int
+  price      Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id])
 }

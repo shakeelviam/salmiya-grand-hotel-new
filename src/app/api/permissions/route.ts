@@ -1,76 +1,78 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { z } from "zod"
 import { prisma } from "@/lib/db"
-import { withPermission } from "@/lib/permissions"
+import { authOptions } from "@/lib/auth"
+
+const permissionSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  action: z.enum(["CREATE", "READ", "UPDATE", "DELETE"], {
+    required_error: "Action is required",
+  }),
+  subject: z.string().min(1, "Subject is required"),
+})
 
 // GET: Fetch all permissions
-export const GET = withPermission(
-  async function GET() {
-    try {
-      const permissions = await prisma.permission.findMany({
-        orderBy: {
-          subject: "asc",
-        },
-      })
-
-      return NextResponse.json(permissions)
-    } catch (error) {
-      console.error("Error fetching permissions:", error)
-      return NextResponse.json(
-        { error: "Failed to fetch permissions" },
-        { status: 500 }
-      )
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
-  },
-  { action: "READ", subject: "permission" }
-)
+
+    const permissions = await prisma.permission.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return NextResponse.json(permissions)
+  } catch (error) {
+    console.error("[PERMISSIONS_GET]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
 
 // POST: Create a new permission
-export const POST = withPermission(
-  async function POST(request: Request) {
-    try {
-      const json = await request.json()
-
-      // Validate required fields
-      if (!json.name || !json.action || !json.subject) {
-        return NextResponse.json(
-          { error: "Missing required fields" },
-          { status: 400 }
-        )
-      }
-
-      // Check if permission already exists
-      const existingPermission = await prisma.permission.findFirst({
-        where: {
-          action: json.action,
-          subject: json.subject,
-        },
-      })
-
-      if (existingPermission) {
-        return NextResponse.json(
-          { error: "Permission already exists" },
-          { status: 400 }
-        )
-      }
-
-      // Create the permission
-      const permission = await prisma.permission.create({
-        data: {
-          name: json.name,
-          description: json.description,
-          action: json.action,
-          subject: json.subject,
-        },
-      })
-
-      return NextResponse.json(permission)
-    } catch (error) {
-      console.error("Error creating permission:", error)
-      return NextResponse.json(
-        { error: "Failed to create permission" },
-        { status: 500 }
-      )
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
-  },
-  { action: "CREATE", subject: "permission" }
-)
+
+    const body = await req.json()
+    const validatedFields = permissionSchema.safeParse(body)
+
+    if (!validatedFields.success) {
+      return new NextResponse("Invalid fields", { status: 400 })
+    }
+
+    const { name, description, action, subject } = validatedFields.data
+
+    const existingPermission = await prisma.permission.findFirst({
+      where: {
+        name,
+      },
+    })
+
+    if (existingPermission) {
+      return new NextResponse("Permission already exists", { status: 400 })
+    }
+
+    const permission = await prisma.permission.create({
+      data: {
+        name,
+        description,
+        action,
+        subject,
+      },
+    })
+
+    return NextResponse.json(permission)
+  } catch (error) {
+    console.error("[PERMISSIONS_POST]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}

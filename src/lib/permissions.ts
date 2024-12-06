@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { PermissionAction } from "@prisma/client"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 export type Permission = {
   action: PermissionAction
@@ -12,45 +13,57 @@ export async function checkPermission(
   action: PermissionAction,
   subject: string
 ): Promise<boolean> {
-  const session = await getServerSession()
-  if (!session?.user?.email) return false
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) return false
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      rolePermissions: {
-        include: {
-          permission: true,
-        },
-      },
-    },
-  })
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
 
-  if (!user) return false
+    if (!user) return false
 
-  // Admins have all permissions
-  if (user.role === "ADMIN") return true
+    // Admins have all permissions
+    if (user.role === "ADMIN") return true
 
-  // Check if user has the specific permission
-  return user.rolePermissions.some(
-    (rp) => rp.permission.action === action && rp.permission.subject === subject
-  )
-}
-
-// Updated withPermission function
-export async function withPermission(handler: Function, permission: Permission) {
-  return async function (req: Request, context: any) {
-    const hasPermission = await checkPermission(permission.action, permission.subject)
-
-    if (!hasPermission) {
-      return NextResponse.json(
-        { error: "Unauthorized: Insufficient permissions" },
-        { status: 403 }
-      )
+    // For now, grant basic permissions to all authenticated users
+    // You can make this more granular later
+    if (user.role === "MANAGER") {
+      return true
     }
 
-    // Properly await the handler's result
-    return await handler(req, context)
+    // Staff can read most things
+    if (user.role === "STAFF" && action === "READ") {
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error("Permission check error:", error)
+    return false
+  }
+}
+
+export function withPermission(handler: Function, permission: Permission) {
+  return async function (req: Request, context: any) {
+    try {
+      const hasPermission = await checkPermission(permission.action, permission.subject)
+
+      if (!hasPermission) {
+        return NextResponse.json(
+          { error: "Unauthorized: Insufficient permissions" },
+          { status: 403 }
+        )
+      }
+
+      return await handler(req, context)
+    } catch (error) {
+      console.error("Permission check error:", error)
+      return NextResponse.json(
+        { error: "Internal server error during permission check" },
+        { status: 500 }
+      )
+    }
   }
 }
 
