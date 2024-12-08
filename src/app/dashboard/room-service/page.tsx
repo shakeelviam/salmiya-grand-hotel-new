@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
-import { getActiveReservations, getRoomServiceItems } from "@/lib/erpnext"
+import { getActiveReservations, getRoomServiceItems } from "@/lib/api"
 
 const roomServiceSchema = z.object({
   reservation: z.string().min(1, "Reservation is required"),

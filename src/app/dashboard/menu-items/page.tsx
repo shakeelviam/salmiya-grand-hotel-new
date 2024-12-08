@@ -76,6 +76,14 @@ export default function MenuItemsPage() {
     }
   }
 
+  const handleSuccess = () => {
+    fetchMenuItems()
+  }
+
+  useEffect(() => {
+    fetchMenuItems()
+  }, [selectedCategory])
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -103,11 +111,7 @@ export default function MenuItemsPage() {
     }
 
     fetchCategories()
-  }, [toast])
-
-  useEffect(() => {
-    fetchMenuItems()
-  }, [selectedCategory, toast])
+  }, [])
 
   return (
     <div className="container mx-auto py-10">
@@ -155,7 +159,7 @@ export default function MenuItemsPage() {
               <MenuItemForm 
                 setOpen={setOpen} 
                 categories={categories} 
-                onSuccess={fetchMenuItems}
+                onSuccess={handleSuccess}
               />
             </DialogContent>
           </Dialog>

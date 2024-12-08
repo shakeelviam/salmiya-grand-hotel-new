@@ -4,11 +4,33 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { getKitchenOrders, updateRoomServiceOrderStatus } from "@/lib/erpnext"
+import { getKitchenOrders, updateRoomServiceOrderStatus } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 
+interface KitchenOrder {
+  id: string
+  room: {
+    number: string
+  }
+  service: {
+    name: string
+    category: {
+      name: string
+    }
+  }
+  quantity: number
+  notes?: string
+  status: string
+  createdAt: string
+  reservation: {
+    user: {
+      name: string
+    }
+  }
+}
+
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<any[]>([])
+  const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -22,7 +44,7 @@ export default function KitchenPage() {
   async function loadOrders() {
     try {
       const response = await getKitchenOrders()
-      setOrders(response.data)
+      setOrders(response)
     } catch (error) {
       toast({
         title: "Error",
@@ -53,10 +75,11 @@ export default function KitchenPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      Pending: "bg-yellow-100 text-yellow-800",
-      "In Progress": "bg-blue-100 text-blue-800",
-      Completed: "bg-green-100 text-green-800",
-      Cancelled: "bg-red-100 text-red-800"
+      PENDING: "bg-yellow-100 text-yellow-800",
+      IN_PROGRESS: "bg-blue-100 text-blue-800",
+      COMPLETED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
+      READY: "bg-emerald-100 text-emerald-800"
     }
     return colors[status] || "bg-gray-100 text-gray-800"
   }
@@ -72,50 +95,61 @@ export default function KitchenPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.map((order) => (
-          <Card key={order.name}>
+          <Card key={order.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle>Order #{order.name}</CardTitle>
+                <CardTitle>Order #{order.id.slice(-6)}</CardTitle>
                 <Badge className={getStatusColor(order.status)}>
-                  {order.status}
+                  {order.status.replace("_", " ")}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                Room {order.room} • {new Date(order.creation).toLocaleTimeString()}
+                Room {order.room.number} • {new Date(order.createdAt).toLocaleTimeString()}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Guest: {order.reservation.user.name}
               </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  {order.items.map((item: any) => (
-                    <div key={item.name} className="flex justify-between">
-                      <span>{item.quantity}× {item.item_name}</span>
-                      <span className="text-muted-foreground">{item.notes}</span>
-                    </div>
-                  ))}
+                  <div className="flex justify-between">
+                    <span>{order.quantity}× {order.service.name}</span>
+                    {order.notes && (
+                      <span className="text-muted-foreground">{order.notes}</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
-                  {order.status === "Pending" && (
+                  {order.status === "PENDING" && (
                     <Button
                       className="flex-1"
-                      onClick={() => updateStatus(order.name, "In Progress")}
+                      onClick={() => updateStatus(order.id, "IN_PROGRESS")}
                     >
                       Start Preparing
                     </Button>
                   )}
-                  {order.status === "In Progress" && (
+                  {order.status === "IN_PROGRESS" && (
                     <Button
                       className="flex-1"
-                      onClick={() => updateStatus(order.name, "Completed")}
+                      onClick={() => updateStatus(order.id, "READY")}
                     >
                       Mark as Ready
                     </Button>
                   )}
-                  {order.status !== "Cancelled" && order.status !== "Completed" && (
+                  {order.status === "READY" && (
+                    <Button
+                      className="flex-1"
+                      onClick={() => updateStatus(order.id, "COMPLETED")}
+                    >
+                      Mark as Delivered
+                    </Button>
+                  )}
+                  {order.status !== "CANCELLED" && order.status !== "COMPLETED" && (
                     <Button
                       variant="destructive"
-                      onClick={() => updateStatus(order.name, "Cancelled")}
+                      onClick={() => updateStatus(order.id, "CANCELLED")}
                     >
                       Cancel
                     </Button>

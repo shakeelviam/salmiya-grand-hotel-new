@@ -26,6 +26,7 @@ type User = {
   id: string
   name: string
   email: string
+  roles: Array<{ id: string; name: string }>
   role: string
   createdAt: string
   updatedAt: string
@@ -41,14 +42,19 @@ export default function UsersPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/users')
-      if (!response.ok) throw new Error('Failed to fetch users')
       const data = await response.json()
+      console.log('Response data:', data) // Debug log
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch users')
+      }
+      
       setUsers(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: error.message || "Failed to fetch users",
         variant: "destructive"
       })
     } finally {
@@ -63,33 +69,27 @@ export default function UsersPage() {
   const handleUserCreated = () => {
     setIsDialogOpen(false)
     fetchUsers()
+    toast({
+      title: "Success",
+      description: "User created successfully",
+    })
   }
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role.toUpperCase()) {
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role?.toUpperCase()) {
       case 'ADMIN':
-        return 'bg-red-100 text-red-800'
+        return 'default'
       case 'MANAGER':
-        return 'bg-blue-100 text-blue-800'
-      case 'STAFF':
-        return 'bg-green-100 text-green-800'
+        return 'secondary'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'outline'
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto py-10">
+    <div className="container py-10">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Users</h1>
+        <h1 className="text-3xl font-bold">Users</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -113,37 +113,42 @@ export default function UsersPage() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Updated</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant="secondary"
-                    className={getRoleBadgeColor(user.role)}
-                  >
-                    {user.role}
-                  </Badge>
-                </TableCell>
-                <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Handle edit
-                    }}
-                  >
-                    Edit
-                  </Button>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10">
+                  Loading users...
                 </TableCell>
               </TableRow>
-            ))}
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10">
+                  No users found
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge variant={getRoleBadgeVariant(user.role)}>
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(user.updatedAt).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

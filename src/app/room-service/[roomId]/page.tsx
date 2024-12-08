@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getRoomServiceItems, createERPNextDoc } from "@/lib/erpnext"
+import { getRoomServiceItems } from "@/lib/api"
 import { toast } from "@/components/ui/use-toast"
 import { formatKWD } from "@/lib/currency"
 
@@ -94,7 +94,13 @@ export default function RoomServiceMenu() {
         category: category
       }
 
-      await createERPNextDoc("Room Service Order", orderData)
+      await fetch('/api/room-service/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      })
 
       toast({
         title: "Order Placed",

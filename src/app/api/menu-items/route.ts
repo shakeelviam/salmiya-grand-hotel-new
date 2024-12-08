@@ -86,34 +86,29 @@ export async function POST(req: Request) {
       }
 
       const menuItem = await prisma.menuItem.create({
-        data: {
-          name: validatedData.name,
-          description: validatedData.description,
-          price: validatedData.price,
-          categoryId: validatedData.categoryId,
-          imageUrl: validatedData.imageUrl,
-          isActive: validatedData.isActive,
-        },
+        data: validatedData,
         include: {
           category: true
         }
       })
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         data: menuItem,
-        message: "Menu item created successfully" 
-      }, { status: 201 })
-    } catch (validationError) {
-      console.error('Validation error:', validationError)
-      return NextResponse.json(
-        { error: "Validation failed", details: validationError },
-        { status: 400 }
-      )
+        message: "Menu item created successfully"
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: "Validation failed", details: error.errors },
+          { status: 400 }
+        )
+      }
+      throw error
     }
   } catch (error) {
-    console.error('Server error:', error)
+    console.error('Error creating menu item:', error)
     return NextResponse.json(
-      { error: 'Failed to create menu item' },
+      { error: error instanceof Error ? error.message : "Failed to create menu item" },
       { status: 500 }
     )
   }

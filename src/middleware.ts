@@ -6,46 +6,38 @@ export default withAuth(
     const token = req.nextauth.token
     const isAuth = !!token
     const isAuthPage = req.nextUrl.pathname.startsWith('/auth')
-    const role = token?.role
 
-    if (isAuthPage) {
-      if (isAuth) {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-      return null
+    console.log('Middleware check:', {
+      path: req.nextUrl.pathname,
+      isAuth,
+      isAuthPage
+    })
+
+    // If user is on an auth page but already authenticated,
+    // redirect to dashboard
+    if (isAuthPage && isAuth) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
-    if (!isAuth) {
-      let from = req.nextUrl.pathname
-      if (req.nextUrl.search) {
-        from += req.nextUrl.search
-      }
-
-      return NextResponse.redirect(
-        new URL(`/auth/login?from=${encodeURIComponent(from)}`, req.url)
-      )
+    // If user is not authenticated and not on an auth page,
+    // redirect to login
+    if (!isAuth && !isAuthPage) {
+      return NextResponse.redirect(new URL('/auth/login', req.url))
     }
 
-    // Handle role-based access
-    if (req.nextUrl.pathname.startsWith('/dashboard')) {
-      // Admin routes
-      if (req.nextUrl.pathname.startsWith('/dashboard/users') && role !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-
-      // Manager routes
-      if (req.nextUrl.pathname.startsWith('/dashboard/reports') && !['ADMIN', 'MANAGER'].includes(role as string)) {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-    }
+    // Allow the request to proceed
+    return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => {
+        console.log('Auth callback token:', token)
+        return true
+      },
     },
   }
 )
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/auth/:path*'],
+  matcher: ['/dashboard/:path*', '/auth/:path*']
 }

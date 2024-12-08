@@ -82,11 +82,11 @@ export function ReservationForm() {
     },
   })
 
-  // Fetch guests (customers) from ERPNext
+  // Fetch guests (users) from database
   useEffect(() => {
     async function fetchGuests() {
       try {
-        const response = await fetch('/api/erpnext/customers')
+        const response = await fetch('/api/users')
         if (!response.ok) throw new Error('Failed to fetch guests')
         const data = await response.json()
         setGuests(data)
@@ -105,7 +105,7 @@ export function ReservationForm() {
   useEffect(() => {
     async function fetchRooms() {
       try {
-        const response = await fetch('/api/erpnext/rooms?status=AVAILABLE')
+        const response = await fetch('/api/rooms?status=AVAILABLE')
         if (!response.ok) throw new Error('Failed to fetch rooms')
         const data = await response.json()
         setRooms(data)
@@ -123,7 +123,7 @@ export function ReservationForm() {
   async function onSubmit(data: FormValues) {
     try {
       setLoading(true)
-      const response = await fetch('/api/erpnext/reservations', {
+      const response = await fetch('/api/reservations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

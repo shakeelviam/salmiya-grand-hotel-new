@@ -1,5 +1,6 @@
+"use client"
+
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,10 +26,12 @@ interface RoomFormProps {
 }
 
 export function RoomForm({ roomTypes, initialData, onSubmit }: RoomFormProps) {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isAvailable, setIsAvailable] = useState(initialData?.isAvailable ?? true)
+  const [selectedRoomType, setSelectedRoomType] = useState(initialData?.roomTypeId || "")
+
+  console.log("Room types:", roomTypes) // Debug log
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -38,11 +41,23 @@ export function RoomForm({ roomTypes, initialData, onSubmit }: RoomFormProps) {
     try {
       const formData = new FormData(event.currentTarget)
       formData.set("isAvailable", isAvailable.toString())
+      
+      // Log form data before submission
+      console.log("Submitting form data:", {
+        number: formData.get("number"),
+        floor: formData.get("floor"),
+        roomTypeId: formData.get("roomTypeId"),
+        isAvailable: formData.get("isAvailable"),
+      })
+
+      if (!formData.get("roomTypeId")) {
+        throw new Error("Please select a room type")
+      }
+
       await onSubmit(formData)
-      router.push("/dashboard/rooms")
-      router.refresh()
     } catch (error) {
-      setError("An error occurred. Please try again.")
+      console.error("Form submission error:", error)
+      setError(error instanceof Error ? error.message : "An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -72,7 +87,12 @@ export function RoomForm({ roomTypes, initialData, onSubmit }: RoomFormProps) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="roomTypeId">Room Type</Label>
-        <Select name="roomTypeId" defaultValue={initialData?.roomTypeId} required>
+        <Select 
+          name="roomTypeId" 
+          value={selectedRoomType}
+          onValueChange={setSelectedRoomType}
+          required
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select a room type" />
           </SelectTrigger>

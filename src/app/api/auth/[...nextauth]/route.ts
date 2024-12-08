@@ -31,9 +31,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
           throw new Error('Email and password are required')
         }
 
+        console.log('Authorizing user:', credentials.email)
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
           include: {
@@ -42,11 +44,14 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user) {
+          console.log('User not found:', credentials.email)
           throw new Error('No user found with the provided email')
         }
 
+        console.log('Found user:', { email: user.email, roles: user.roles })
         const isPasswordValid = await compare(credentials.password, user.password || '')
         if (!isPasswordValid) {
+          console.log('Invalid password for user:', credentials.email)
           throw new Error('Invalid password')
         }
 
@@ -61,6 +66,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      console.log('JWT Callback:', { token, user })
       if (user) {
         token.id = user.id
         token.role = user.role
@@ -68,6 +74,7 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
+      console.log('Session Callback:', { session, token })
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
@@ -81,8 +88,9 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 24 * 60 * 60, // 24 hours
   },
+  debug: true, // Enable debug mode
   secret: process.env.NEXTAUTH_SECRET,
 }
 

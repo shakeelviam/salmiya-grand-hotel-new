@@ -5,16 +5,12 @@ const prisma = new PrismaClient()
 
 async function main() {
   try {
-    // Check if admin user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: 'shakeel.viam@gmail.com' },
-      include: { roles: true }
+    // Delete existing user with the same email if exists
+    await prisma.user.deleteMany({
+      where: {
+        email: 'shakeel.viam@gmail.com'
+      }
     })
-
-    if (existingUser) {
-      console.log('Admin user already exists')
-      return
-    }
 
     // Create admin role if it doesn't exist
     const adminRole = await prisma.role.upsert({
@@ -26,15 +22,15 @@ async function main() {
       }
     })
 
-    console.log('Admin role created/found:', adminRole)
-
-    // Create admin user
     const hashedPassword = await hash('Marsha@2003', 12)
-    const adminUser = await prisma.user.create({
+    
+    // Create admin user
+    const user = await prisma.user.create({
       data: {
+        name: 'Shakeel Mohammed Viam',
         email: 'shakeel.viam@gmail.com',
-        name: 'Shakeel',
         password: hashedPassword,
+        emailVerified: new Date(),
         roles: {
           connect: {
             id: adminRole.id
@@ -46,24 +42,17 @@ async function main() {
       }
     })
 
-    console.log('Admin user created:', {
-      id: adminUser.id,
-      email: adminUser.email,
-      name: adminUser.name,
-      roles: adminUser.roles
-    })
-
-    // Create default permissions for admin role
+    // Create default permissions
     const permissions = [
       { name: 'manage_users', description: 'Manage system users', action: 'manage', subject: 'user' },
       { name: 'manage_roles', description: 'Manage user roles', action: 'manage', subject: 'role' },
-      { name: 'manage_permissions', description: 'Manage role permissions', action: 'manage', subject: 'permission' },
       { name: 'manage_rooms', description: 'Manage hotel rooms', action: 'manage', subject: 'room' },
-      { name: 'manage_bookings', description: 'Manage room bookings', action: 'manage', subject: 'booking' },
-      { name: 'manage_guests', description: 'Manage guest information', action: 'manage', subject: 'guest' },
+      { name: 'manage_reservations', description: 'Manage reservations', action: 'manage', subject: 'reservation' },
       { name: 'manage_payments', description: 'Manage payments', action: 'manage', subject: 'payment' },
+      { name: 'manage_menu', description: 'Manage menu items', action: 'manage', subject: 'menu' },
+      { name: 'manage_services', description: 'Manage hotel services', action: 'manage', subject: 'service' },
       { name: 'view_reports', description: 'View system reports', action: 'read', subject: 'report' },
-      { name: 'manage_settings', description: 'Manage system settings', action: 'manage', subject: 'setting' },
+      { name: 'manage_settings', description: 'Manage system settings', action: 'manage', subject: 'setting' }
     ]
 
     for (const perm of permissions) {
@@ -82,16 +71,31 @@ async function main() {
           }
         }
       })
-      console.log('Created permission:', permission.name)
+
+      // Create role permission for the user
+      await prisma.rolePermission.create({
+        data: {
+          userId: user.id,
+          permissionId: permission.id
+        }
+      })
     }
 
-    console.log('Successfully created admin user with all permissions')
+    console.log('Created admin user:', {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      roles: user.roles.map(r => r.name)
+    })
+    console.log('Successfully set up admin user with all permissions')
+
   } catch (error) {
     console.error('Error creating admin user:', error)
-    process.exit(1)
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 main()
+  .catch(console.error)
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

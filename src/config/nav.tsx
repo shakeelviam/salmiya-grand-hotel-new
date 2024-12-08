@@ -20,6 +20,7 @@ import {
   Key,
   Shield,
   List,
+  CreditCard,
 } from "lucide-react"
 
 export const navItems = [
@@ -53,13 +54,37 @@ export const navItems = [
         title: "Room Types",
         href: "/dashboard/room-types",
         icon: BedSingle,
-        description: "Manage room categories and types",
+        description: "Manage room categories and pricing",
       },
       {
         title: "Reservations",
         href: "/dashboard/reservations",
         icon: CalendarDays,
-        description: "Booking management",
+        description: "Booking and reservation management",
+      },
+      {
+        title: "Kitchen",
+        href: "/dashboard/kitchen",
+        icon: UtensilsCrossed,
+        description: "Food service order management",
+      },
+      {
+        title: "Room Service",
+        href: "/dashboard/room-service",
+        icon: Coffee,
+        description: "All room service orders",
+      },
+      {
+        title: "Services",
+        href: "/dashboard/services",
+        icon: ClipboardList,
+        description: "Manage hotel services",
+      },
+      {
+        title: "Service Categories",
+        href: "/dashboard/service-categories",
+        icon: List,
+        description: "Manage service categories",
       },
       {
         title: "Guests",
@@ -90,23 +115,11 @@ export const navItems = [
         icon: List,
         description: "Manage menu categories",
       },
-      {
-        title: "Kitchen Orders",
-        href: "/dashboard/kitchen",
-        icon: UtensilsCrossed,
-        description: "Manage room service orders",
-      },
     ],
   },
   {
     title: "Administration",
     items: [
-      {
-        title: "Users",
-        href: "/dashboard/users",
-        icon: UserCircle,
-        description: "System users and access",
-      },
       {
         title: "Roles",
         href: "/dashboard/roles",
@@ -162,6 +175,44 @@ export const navItems = [
     ],
   },
   {
+    title: "Payments",
+    items: [
+      {
+        title: "Payment Modes",
+        href: "/dashboard/payment-modes",
+        icon: CreditCard,
+      },
+      {
+        title: "All Payments",
+        href: "/dashboard/payments",
+        icon: Receipt,
+      },
+    ],
+  },
+  {
+    title: "Settings & Administration",
+    items: [
+      {
+        title: "Users",
+        href: "/dashboard/users",
+        icon: Users,
+        description: "Manage staff and user accounts",
+      },
+      {
+        title: "Profile",
+        href: "/dashboard/profile",
+        icon: UserCircle,
+        description: "Your account settings",
+      },
+      {
+        title: "Settings",
+        href: "/dashboard/settings",
+        icon: Settings,
+        description: "System configuration",
+      },
+    ],
+  },
+  {
     title: "Support",
     items: [
       {
@@ -175,12 +226,6 @@ export const navItems = [
         href: "/dashboard/help",
         icon: HelpCircle,
         description: "Documentation and guides",
-      },
-      {
-        title: "Settings",
-        href: "/dashboard/settings",
-        icon: Settings,
-        description: "System configuration",
       },
     ],
   },

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { RoomTypeForm } from "@/components/forms/room-type-form"
+import { formatCurrency } from "@/lib/utils/currency"
 
 type RoomType = {
   id: string
@@ -28,7 +29,7 @@ type RoomType = {
   adultCapacity: number
   childCapacity: number
   basePrice: number
-  extraBedPrice: number
+  extraBedCharge: number
   createdAt: string
   updatedAt: string
 }
@@ -104,7 +105,7 @@ export default function RoomTypesPage() {
               <TableHead>Adult Capacity</TableHead>
               <TableHead>Child Capacity</TableHead>
               <TableHead>Base Price</TableHead>
-              <TableHead>Extra Bed Price</TableHead>
+              <TableHead>Extra Bed Charge</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,8 +115,8 @@ export default function RoomTypesPage() {
                 <TableCell>{roomType.description}</TableCell>
                 <TableCell>{roomType.adultCapacity}</TableCell>
                 <TableCell>{roomType.childCapacity}</TableCell>
-                <TableCell>${roomType.basePrice.toFixed(2)}</TableCell>
-                <TableCell>${roomType.extraBedPrice.toFixed(2)}</TableCell>
+                <TableCell>{formatCurrency(roomType.basePrice)}</TableCell>
+                <TableCell>{formatCurrency(roomType.extraBedCharge)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

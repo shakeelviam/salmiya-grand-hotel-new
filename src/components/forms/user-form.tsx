@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -22,15 +22,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { getRoles } from "@/lib/api"
 
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email format"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["ADMIN", "MANAGER", "STAFF"], {
-    required_error: "Role is required",
-  }),
+  roleId: z.string().min(1, "Role is required"),
 })
+
+type Role = {
+  id: string
+  name: string
+  description?: string
+}
 
 type UserFormProps = {
   onSuccess?: () => void
@@ -38,13 +43,30 @@ type UserFormProps = {
     id: string
     name: string
     email: string
-    role: string
+    roles: Role[]
   }
 }
 
 export function UserForm({ onSuccess, user }: UserFormProps) {
   const [loading, setLoading] = useState(false)
+  const [roles, setRoles] = useState<Role[]>([])
   const { toast } = useToast()
+
+  useEffect(() => {
+    async function loadRoles() {
+      try {
+        const data = await getRoles()
+        setRoles(data)
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load roles",
+          variant: "destructive",
+        })
+      }
+    }
+    loadRoles()
+  }, [])
 
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
@@ -52,7 +74,7 @@ export function UserForm({ onSuccess, user }: UserFormProps) {
       name: user?.name || "",
       email: user?.email || "",
       password: "",
-      role: user?.role as "ADMIN" | "MANAGER" | "STAFF" || "STAFF",
+      roleId: user?.roles?.[0]?.id || "",
     },
   })
 
@@ -141,13 +163,13 @@ export function UserForm({ onSuccess, user }: UserFormProps) {
 
         <FormField
           control={form.control}
-          name="role"
+          name="roleId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Role</FormLabel>
               <Select 
                 onValueChange={field.onChange} 
-                defaultValue={field.value || "STAFF"}
+                value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -155,9 +177,11 @@ export function UserForm({ onSuccess, user }: UserFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="MANAGER">Manager</SelectItem>
-                  <SelectItem value="STAFF">Staff</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

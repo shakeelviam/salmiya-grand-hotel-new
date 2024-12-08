@@ -48,28 +48,39 @@ const PERMISSION_CATEGORIES = {
     }
   },
   "Hotel Operations": {
-    resources: ["rooms", "bookings", "guests"],
+    resources: [
+      "rooms",
+      "room-types",
+      "reservations",
+      "room-service",
+      "services",
+      "service-categories"
+    ],
     description: "Manage core hotel operations",
     permissions: {
       rooms: "Manage room inventory and status",
-      bookings: "Handle reservations and bookings",
-      guests: "Manage guest information and history"
+      "room-types": "Configure room categories and pricing",
+      reservations: "Handle guest reservations and check-ins",
+      "room-service": "Manage room service orders",
+      services: "Configure hotel services",
+      "service-categories": "Manage service categories"
     }
   },
   "Food and Beverage": {
-    resources: ["menu-categories", "menu-items", "orders"],
+    resources: ["menu-categories", "menu-items", "kitchen"],
     description: "Manage restaurant and food service operations",
     permissions: {
       "menu-categories": "Manage menu categories",
       "menu-items": "Manage menu items and pricing",
-      "orders": "Handle food and beverage orders"
+      kitchen: "Handle food preparation and orders"
     }
   },
   "Finance": {
-    resources: ["payments", "reports"],
+    resources: ["payments", "bills", "reports"],
     description: "Handle financial operations and reporting",
     permissions: {
       payments: "Process and manage payments",
+      bills: "Handle guest bills and invoices",
       reports: "Access and generate financial reports"
     }
   },

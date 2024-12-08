@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -37,6 +38,7 @@ export default function LoginPage() {
         throw new Error('Please fill in all fields')
       }
 
+      console.log('Attempting login with:', email)
       const response = await signIn('credentials', {
         email,
         password,
@@ -44,31 +46,32 @@ export default function LoginPage() {
         callbackUrl,
       })
 
+      console.log('Login response:', response)
+
       if (!response) {
-        throw new Error('Something went wrong')
+        throw new Error('Authentication failed')
       }
 
       if (response.error) {
-        if (response.error === 'Invalid credentials') {
-          throw new Error('Invalid email or password. Please try again.')
-        }
-        if (response.error === 'Account locked') {
-          throw new Error('Your account is locked. Please contact support.')
-        }
         throw new Error(response.error)
+      }
+
+      if (!response.ok) {
+        throw new Error('Login failed')
       }
 
       toast({
         title: 'Success',
-        description: 'Signed in successfully',
+        description: 'Logged in successfully',
       })
 
       router.push(callbackUrl)
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Login error:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Authentication failed',
+        description: error.message || 'Failed to sign in',
         variant: 'destructive',
       })
     } finally {
@@ -77,85 +80,65 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-        <div className="absolute inset-0 bg-primary" />
-        <div className="relative z-20 flex items-center text-lg font-medium">
-          <Icons.hotel className="mr-2 h-6 w-6" />
-          Salmiya Grand Hotel
-        </div>
-        <div className="relative z-20 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-lg">
-              Experience luxury and comfort at its finest. Welcome to Salmiya Grand Hotel, 
-              where exceptional service meets elegant accommodation.
-            </p>
-          </blockquote>
-        </div>
-      </div>
-      <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <Card className="border-none shadow-none">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl text-center font-bold">
-                Sign in
-              </CardTitle>
-              <CardDescription className="text-center">
-                Enter your credentials to access the dashboard
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="name@company.com"
-                    required
-                    disabled={loading}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    disabled={loading}
-                    className="w-full"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading && (
-                    <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Button>
-              </form>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button 
-                variant="link" 
-                className="w-full text-center text-sm"
-                onClick={() => router.push('/auth/reset-password')}
+    <div className="container flex items-center justify-center min-h-screen py-10">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Sign In</CardTitle>
+          <CardDescription className="text-center">
+            Enter your email and password to access your account
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                placeholder="name@example.com"
+                type="email"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect="off"
+                disabled={loading}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoCapitalize="none"
+                autoComplete="current-password"
+                disabled={loading}
+                required
+              />
+            </div>
+            <div className="flex justify-end">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-muted-foreground hover:text-primary"
               >
-                Forgot Password?
-              </Button>
-              <div className="text-sm text-muted-foreground text-center">
-                This is a secure area. Only authorized personnel can access.
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
+                Forgot password?
+              </Link>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading && (
+                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   )
 }

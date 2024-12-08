@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
+import { formatCurrency, parseCurrency } from "@/lib/utils/currency"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -33,8 +34,8 @@ const formSchema = z.object({
   basePrice: z.coerce.number().min(0, {
     message: "Base price must be greater than or equal to 0.",
   }),
-  extraBedPrice: z.coerce.number().min(0, {
-    message: "Extra bed price must be greater than or equal to 0.",
+  extraBedCharge: z.coerce.number().min(0, {
+    message: "Extra bed charge must be greater than or equal to 0.",
   }),
 })
 
@@ -47,7 +48,7 @@ type RoomTypeFormProps = {
     adultCapacity: number
     childCapacity: number
     basePrice: number
-    extraBedPrice: number
+    extraBedCharge: number
   }
 }
 
@@ -63,7 +64,7 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
       adultCapacity: roomType?.adultCapacity || 2,
       childCapacity: roomType?.childCapacity || 1,
       basePrice: roomType?.basePrice || 0,
-      extraBedPrice: roomType?.extraBedPrice || 0,
+      extraBedCharge: roomType?.extraBedCharge || 0,
     },
   })
 
@@ -169,11 +170,22 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
           <FormField
             control={form.control}
             name="basePrice"
-            render={({ field }) => (
+            render={({ field: { value, onChange, ...field } }) => (
               <FormItem>
-                <FormLabel>Base Price (KD)</FormLabel>
+                <FormLabel>Base Price</FormLabel>
                 <FormControl>
-                  <Input type="number" min={0} step={0.001} {...field} />
+                  <Input 
+                    type="text"
+                    inputMode="decimal"
+                    value={formatCurrency(value)}
+                    onChange={(e) => {
+                      const numericValue = parseCurrency(e.target.value)
+                      if (!isNaN(numericValue)) {
+                        onChange(numericValue)
+                      }
+                    }}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -181,12 +193,23 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
           />
           <FormField
             control={form.control}
-            name="extraBedPrice"
-            render={({ field }) => (
+            name="extraBedCharge"
+            render={({ field: { value, onChange, ...field } }) => (
               <FormItem>
-                <FormLabel>Extra Bed Price (KD)</FormLabel>
+                <FormLabel>Extra Bed Charge</FormLabel>
                 <FormControl>
-                  <Input type="number" min={0} step={0.001} {...field} />
+                  <Input 
+                    type="text"
+                    inputMode="decimal"
+                    value={formatCurrency(value)}
+                    onChange={(e) => {
+                      const numericValue = parseCurrency(e.target.value)
+                      if (!isNaN(numericValue)) {
+                        onChange(numericValue)
+                      }
+                    }}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

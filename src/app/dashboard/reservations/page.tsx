@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -15,69 +16,127 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { CalendarDays, Plus } from "lucide-react"
+import { CalendarDays, Plus, Search, Filter } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+import { getReservations } from "@/lib/api"
+import { Badge } from "@/components/ui/badge"
+import { formatDate } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
-const reservations = [
-  {
-    id: "RES-001",
-    guest: "Michael Brown",
-    roomType: "Deluxe",
-    checkIn: "2024-01-20",
-    checkOut: "2024-01-25",
-    status: "Confirmed",
-    payment: "Paid",
-  },
-  {
-    id: "RES-002",
-    guest: "Emma Wilson",
-    roomType: "Suite",
-    checkIn: "2024-01-22",
-    checkOut: "2024-01-24",
-    status: "Pending",
-    payment: "Pending",
-  },
-  {
-    id: "RES-003",
-    guest: "David Lee",
-    roomType: "Standard",
-    checkIn: "2024-01-25",
-    checkOut: "2024-01-28",
-    status: "Confirmed",
-    payment: "Paid",
-  },
-  {
-    id: "RES-004",
-    guest: "Sophie Taylor",
-    roomType: "Deluxe",
-    checkIn: "2024-01-27",
-    checkOut: "2024-01-30",
-    status: "Cancelled",
-    payment: "Refunded",
-  },
-]
+interface Reservation {
+  id: string
+  roomType: {
+    name: string
+  }
+  room?: {
+    number: string
+  }
+  user: {
+    name: string
+  }
+  checkIn: string
+  checkOut: string
+  status: string
+  totalAmount: number
+  advanceAmount: number
+  pendingAmount: number
+}
 
 export default function ReservationsPage() {
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string>("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const { toast } = useToast()
+  const router = useRouter()
+
+  // Stats
+  const stats = {
+    total: reservations.length,
+    confirmed: reservations.filter(r => r.status === "CONFIRMED").length,
+    checkedIn: reservations.filter(r => r.status === "CHECKED_IN").length,
+    pending: reservations.filter(r => r.status === "RESERVED_UNPAID").length,
+    cancelled: reservations.filter(r => r.status === "CANCELLED").length,
+  }
+
+  useEffect(() => {
+    loadReservations()
+  }, [statusFilter])
+
+  async function loadReservations() {
+    try {
+      setLoading(true)
+      const data = await getReservations(statusFilter)
+      setReservations(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load reservations",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredReservations = reservations.filter(reservation =>
+    reservation.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (reservation.room?.number.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+    reservation.id.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      RESERVED_UNPAID: "bg-yellow-100 text-yellow-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      CHECKED_IN: "bg-green-100 text-green-800",
+      CHECKED_OUT: "bg-gray-100 text-gray-800",
+      CANCELLED: "bg-red-100 text-red-800",
+    }
+    return colors[status] || "bg-gray-100 text-gray-800"
+  }
+
+  const getPaymentStatus = (reservation: Reservation) => {
+    if (reservation.pendingAmount === 0) return "PAID"
+    if (reservation.advanceAmount > 0) return "PARTIALLY_PAID"
+    return "UNPAID"
+  }
+
+  const getPaymentColor = (status: string) => {
+    const colors = {
+      PAID: "bg-green-100 text-green-800",
+      PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
+      UNPAID: "bg-red-100 text-red-800",
+    }
+    return colors[status] || "bg-gray-100 text-gray-800"
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Reservations</h2>
-        <Button>
+        <Button onClick={() => router.push("/dashboard/reservations/new")}>
           <Plus className="mr-2 h-4 w-4" />
           New Reservation
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">128</div>
-            <p className="text-xs text-muted-foreground">
-              +6 from last week
-            </p>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -86,9 +145,21 @@ export default function ReservationsPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">95</div>
+            <div className="text-2xl font-bold">{stats.confirmed}</div>
             <p className="text-xs text-muted-foreground">
-              74% of total
+              {((stats.confirmed / stats.total) * 100).toFixed(0)}% of total
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Checked In</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.checkedIn}</div>
+            <p className="text-xs text-muted-foreground">
+              {((stats.checkedIn / stats.total) * 100).toFixed(0)}% of total
             </p>
           </CardContent>
         </Card>
@@ -98,9 +169,9 @@ export default function ReservationsPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">28</div>
+            <div className="text-2xl font-bold">{stats.pending}</div>
             <p className="text-xs text-muted-foreground">
-              22% of total
+              {((stats.pending / stats.total) * 100).toFixed(0)}% of total
             </p>
           </CardContent>
         </Card>
@@ -110,9 +181,9 @@ export default function ReservationsPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">{stats.cancelled}</div>
             <p className="text-xs text-muted-foreground">
-              4% of total
+              {((stats.cancelled / stats.total) * 100).toFixed(0)}% of total
             </p>
           </CardContent>
         </Card>
@@ -121,6 +192,36 @@ export default function ReservationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Reservations</CardTitle>
+          <div className="flex items-center space-x-4 pt-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search reservations..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <Select 
+  value={statusFilter || "ALL"} 
+  onValueChange={(value) => setStatusFilter(value === "ALL" ? "" : value)}
+>
+  <SelectTrigger className="w-[180px]">
+    <Filter className="mr-2 h-4 w-4" />
+    <SelectValue placeholder="Filter by status" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="ALL">All Statuses</SelectItem>
+    <SelectItem value="RESERVED_UNPAID">Reserved (Unpaid)</SelectItem>
+    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+    <SelectItem value="CHECKED_IN">Checked In</SelectItem>
+    <SelectItem value="CHECKED_OUT">Checked Out</SelectItem>
+    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+  </SelectContent>
+</Select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -128,49 +229,63 @@ export default function ReservationsPage() {
               <TableRow>
                 <TableHead>Reservation ID</TableHead>
                 <TableHead>Guest</TableHead>
-                <TableHead>Room Type</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead>Check In</TableHead>
                 <TableHead>Check Out</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Payment</TableHead>
+                <TableHead>Amount</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {reservations.map((reservation) => (
-                <TableRow key={reservation.id}>
-                  <TableCell>{reservation.id}</TableCell>
-                  <TableCell>{reservation.guest}</TableCell>
-                  <TableCell>{reservation.roomType}</TableCell>
-                  <TableCell>{reservation.checkIn}</TableCell>
-                  <TableCell>{reservation.checkOut}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        reservation.status === "Confirmed"
-                          ? "bg-green-100 text-green-800"
-                          : reservation.status === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {reservation.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        reservation.payment === "Paid"
-                          ? "bg-green-100 text-green-800"
-                          : reservation.payment === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {reservation.payment}
-                    </span>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredReservations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    No reservations found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredReservations.map((reservation) => (
+                  <TableRow 
+                    key={reservation.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/dashboard/reservations/${reservation.id}`)}
+                  >
+                    <TableCell>{reservation.id.slice(-6)}</TableCell>
+                    <TableCell>{reservation.user.name}</TableCell>
+                    <TableCell>
+                      {reservation.roomType.name}
+                      {reservation.room && ` (Room ${reservation.room.number})`}
+                    </TableCell>
+                    <TableCell>{formatDate(reservation.checkIn)}</TableCell>
+                    <TableCell>{formatDate(reservation.checkOut)}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(reservation.status)}>
+                        {reservation.status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getPaymentColor(getPaymentStatus(reservation))}>
+                        {getPaymentStatus(reservation).replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      ${reservation.totalAmount.toFixed(2)}
+                      {reservation.pendingAmount > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          Pending: ${reservation.pendingAmount.toFixed(2)}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

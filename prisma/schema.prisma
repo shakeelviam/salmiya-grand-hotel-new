@@ -47,6 +47,12 @@ model User {
   rolePermissions   RolePermission[]
   sessions          Session[]
   roles             Role[]              @relation("RoleToUser")
+  resetToken        String?             @unique
+  resetTokenExpiry  DateTime?
+  verifyToken       String?             @unique
+  verifyTokenExpiry DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 }
 
 model VerificationToken {
@@ -101,45 +107,132 @@ model PermissionHistory {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model RoomType {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  description    String?
+  adultCapacity  Int
+  childCapacity  Int
+  extraBedCharge Float
+  basePrice      Float
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  rooms          Room[]
+  reservations   Reservation[]
+}
+
 model Room {
   id           String        @id @default(cuid())
   number       String        @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  floor        String
   description  String?
   isActive     Boolean       @default(true)
-  price        Float
-  type         String
+  isAvailable  Boolean       @default(true)
+  roomTypeId   String
+  status       RoomStatus    @default(AVAILABLE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  roomType     RoomType      @relation(fields: [roomTypeId], references: [id])
   reservations Reservation[]
+  roomServices RoomService[]
 }
 
 model Reservation {
-  id          String    @id @default(cuid())
-  roomId      String
-  checkIn     DateTime
-  checkOut    DateTime
-  totalAmount Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String
-  status      String
-  orders      Order[]
-  payments    Payment[]
-  room        Room      @relation(fields: [roomId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
+  id              String            @id @default(cuid())
+  roomId          String?
+  roomTypeId      String
+  checkIn         DateTime
+  checkOut        DateTime
+  adults          Int
+  children        Int
+  extraBeds       Int               @default(0)
+  roomCharges     Float // Base room charges
+  extraBedCharges Float // Extra bed charges
+  serviceCharges  Float // Total service charges
+  totalAmount     Float // Total bill (room + extra bed + services)
+  advanceAmount   Float             @default(0) // Amount paid in advance
+  pendingAmount   Float // Amount pending to be paid
+  status          ReservationStatus @default(RESERVED_UNPAID)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  userId          String
+  guestId         String
+  specialRequests String?
+  room            Room?             @relation(fields: [roomId], references: [id])
+  roomType        RoomType          @relation(fields: [roomTypeId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
+  guest           Guest             @relation(fields: [guestId], references: [id])
+  roomServices    RoomService[]
+  payments        Payment[]
+  bills           Bill[]
+  Order           Order[]
 }
 
-model Payment {
-  id            String      @id @default(cuid())
-  amount        Float
+model Bill {
+  id              String        @id @default(cuid())
+  reservationId   String
+  billNumber      String        @unique
+  roomCharges     Float // Room charges for the stay
+  extraBedCharges Float // Extra bed charges
+  serviceCharges  Float // Total service charges
+  totalAmount     Float // Total bill amount
+  paidAmount      Float // Amount already paid
+  pendingAmount   Float // Amount pending
+  status          BillStatus    @default(UNPAID)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  reservation     Reservation   @relation(fields: [reservationId], references: [id])
+  payments        Payment[]
+  roomServices    RoomService[]
+}
+
+enum BillStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+model RoomService {
+  id            String        @id @default(cuid())
+  roomId        String
   reservationId String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  userId        String
-  method        String
-  status        String
-  reservation   Reservation @relation(fields: [reservationId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
+  serviceId     String
+  quantity      Int           @default(1)
+  status        ServiceStatus @default(PENDING)
+  notes         String?
+  amount        Float
+  billId        String? // Optional reference to a bill
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  room          Room          @relation(fields: [roomId], references: [id])
+  reservation   Reservation   @relation(fields: [reservationId], references: [id])
+  service       Service       @relation(fields: [serviceId], references: [id])
+  bill          Bill?         @relation(fields: [billId], references: [id])
+}
+
+model ServiceCategory {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  type        ServiceType
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  services    Service[]
+}
+
+model Service {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  price        Float
+  isActive     Boolean         @default(true)
+  categoryId   String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  category     ServiceCategory @relation(fields: [categoryId], references: [id])
+  roomServices RoomService[]
 }
 
 model MenuCategory {
@@ -188,4 +281,96 @@ model OrderItem {
   updatedAt  DateTime @updatedAt
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
   order      Order    @relation(fields: [orderId], references: [id])
+}
+
+model PaymentMode {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  code        String    @unique
+  description String?
+  isEnabled   Boolean   @default(true)
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  payments    Payment[]
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  billId        String? // Optional reference to a bill
+  reservationId String
+  amount        Float
+  receiptNumber String        @unique
+  paymentType   PaymentType   @default(ADVANCE) // Whether it's advance or settlement
+  status        PaymentStatus
+  transactionId String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  reservation   Reservation   @relation(fields: [reservationId], references: [id])
+  bill          Bill?         @relation(fields: [billId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  paymentMode   PaymentMode   @relation(fields: [paymentModeId], references: [id])
+  paymentModeId String
+}
+
+model Guest {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  phone          String
+  nationality    String
+  passportNumber String
+  passportCopy   String?   // URL to uploaded passport copy
+  otherDocuments String[]  // Array of URLs to other documents
+  civilId        String?
+  visaNumber     String?
+  vipStatus      Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  reservations   Reservation[]
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  RESERVED
+}
+
+enum ReservationStatus {
+  RESERVED_UNPAID // Initial state when reservation is made without payment
+  CONFIRMED // Payment received, awaiting check-in
+  CHECKED_IN // Guest has arrived and checked in
+  CHECKED_OUT // Guest has completed stay and settled all bills
+  CANCELLED // Reservation was cancelled
+}
+
+enum ServiceType {
+  FOOD
+  NON_FOOD
+}
+
+enum ServiceStatus {
+  PENDING
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentType {
+  ADVANCE // Payment made during reservation
+  SETTLEMENT // Payment made during checkout
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
 }

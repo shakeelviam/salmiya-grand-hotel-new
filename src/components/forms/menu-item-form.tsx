@@ -146,7 +146,7 @@ export function MenuItemForm({ setOpen, categories, item, onSuccess }: Props) {
           name: values.name,
           description: values.description || null,
           price: parseFloat(values.price),
-          category: values.category,
+          categoryId: values.category,
           imageUrl: imageUrl,
           isActive: values.isActive ?? true,
         }),

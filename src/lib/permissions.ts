@@ -19,21 +19,24 @@ export async function checkPermission(
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: {
+        roles: true,
+      },
     })
 
     if (!user) return false
 
-    // Admins have all permissions
-    if (user.role === "ADMIN") return true
+    // Check if user has admin role
+    const isAdmin = user.roles.some(role => role.name === "ADMIN")
+    if (isAdmin) return true
 
-    // For now, grant basic permissions to all authenticated users
-    // You can make this more granular later
-    if (user.role === "MANAGER") {
-      return true
-    }
+    // Check if user has manager role
+    const isManager = user.roles.some(role => role.name === "MANAGER")
+    if (isManager) return true
 
-    // Staff can read most things
-    if (user.role === "STAFF" && action === "READ") {
+    // Check if user has staff role and is trying to read
+    const isStaff = user.roles.some(role => role.name === "STAFF")
+    if (isStaff && action === "READ") {
       return true
     }
 

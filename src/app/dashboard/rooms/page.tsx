@@ -1,5 +1,7 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -15,91 +17,173 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { BedDouble, Plus } from "lucide-react"
+import { RoomQRCode } from "@/components/rooms/qr-code"
+import { RoomForm } from "@/components/forms/room-form"
+import { useToast } from "@/components/ui/use-toast"
 
-const rooms = [
-  {
-    number: "101",
-    type: "Deluxe",
-    status: "Occupied",
-    guest: "John Smith",
-    checkIn: "2024-01-15",
-    checkOut: "2024-01-20",
-  },
-  {
-    number: "102",
-    type: "Suite",
-    status: "Available",
-    guest: "-",
-    checkIn: "-",
-    checkOut: "-",
-  },
-  {
-    number: "103",
-    type: "Standard",
-    status: "Maintenance",
-    guest: "-",
-    checkIn: "-",
-    checkOut: "-",
-  },
-  {
-    number: "104",
-    type: "Deluxe",
-    status: "Reserved",
-    guest: "Sarah Johnson",
-    checkIn: "2024-01-21",
-    checkOut: "2024-01-25",
-  },
-]
+type Room = {
+  id: string
+  number: string
+  type: string
+  status: string
+  guest: string
+  checkIn: string
+  checkOut: string
+}
 
 export default function RoomsPage() {
+  const router = useRouter()
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [roomTypes, setRoomTypes] = useState([])
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  const fetchRooms = async () => {
+    try {
+      console.log("Fetching rooms...")
+      const response = await fetch('/api/rooms')
+      if (!response.ok) throw new Error('Failed to fetch rooms')
+      const data = await response.json()
+      console.log("Fetched rooms:", data)
+      setRooms(data)
+    } catch (error) {
+      console.error('Error fetching rooms:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch rooms",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Fetch room types and rooms
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log("Fetching rooms and room types...")
+        setLoading(true)
+        const [roomTypesResponse, roomsResponse] = await Promise.all([
+          fetch('/api/room-types'),
+          fetch('/api/rooms')
+        ])
+
+        if (!roomTypesResponse.ok || !roomsResponse.ok) {
+          throw new Error('Failed to fetch data')
+        }
+
+        const [roomTypesData, roomsData] = await Promise.all([
+          roomTypesResponse.json(),
+          roomsResponse.json()
+        ])
+
+        console.log("Fetched room types:", roomTypesData)
+        console.log("Fetched rooms:", roomsData)
+
+        setRoomTypes(roomTypesData)
+        setRooms(roomsData)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast({
+          title: "Error",
+          description: "Failed to fetch data",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [toast])
+
+  const handleSubmit = async (formData: FormData) => {
+    try {
+      const response = await fetch('/api/rooms', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to create room')
+      }
+
+      const result = await response.json()
+      
+      toast({
+        title: "Success",
+        description: `Room ${formData.get('number')} has been created successfully`,
+      })
+
+      setIsDialogOpen(false)
+      fetchRooms()
+    } catch (error) {
+      console.error('Error creating room:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create room",
+        variant: "destructive"
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Rooms</h2>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Room
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Room
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Room</DialogTitle>
+            </DialogHeader>
+            <RoomForm 
+              roomTypes={roomTypes} 
+              onSubmit={handleSubmit}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
-            <BedDouble className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">50</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <BedDouble className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">15</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Occupied</CardTitle>
-            <BedDouble className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">30</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
-            <BedDouble className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">5</div>
-          </CardContent>
-        </Card>
+        {rooms.map((room) => (
+          <Card key={room.id}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{room.number}</CardTitle>
+              <BedDouble className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-4">
+                <RoomQRCode roomId={room.id} size={150} />
+                <p className="text-sm text-muted-foreground">
+                  Scan to access room service
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
@@ -120,7 +204,7 @@ export default function RoomsPage() {
             </TableHeader>
             <TableBody>
               {rooms.map((room) => (
-                <TableRow key={room.number}>
+                <TableRow key={room.id}>
                   <TableCell>{room.number}</TableCell>
                   <TableCell>{room.type}</TableCell>
                   <TableCell>

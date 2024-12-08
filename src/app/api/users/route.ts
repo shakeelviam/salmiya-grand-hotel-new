@@ -37,7 +37,7 @@ async function createInitialAdmin() {
     await prisma.user.create({
       data: {
         email: 'shakeel.viam@gmail.com',
-        name: 'Shakeel',
+        name: 'Shakeel Mohammed Viam',
         password: hashedPassword,
         roles: {
           connect: {
@@ -60,40 +60,40 @@ const userSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['ADMIN', 'MANAGER', 'STAFF']).default('STAFF'),
+  roleId: z.string().min(1, 'Role is required'),
 })
 
 // GET: Fetch all users
-export const GET = withPermission(
-  async function GET(req: Request) {
-    try {
-      const users = await prisma.user.findMany({
-        include: {
-          roles: true
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      })
+export async function GET(req: Request) {
+  try {
+    const users = await prisma.user.findMany({
+      include: {
+        roles: true
+      },
+      orderBy: [
+        {
+          updatedAt: 'desc'
+        }
+      ]
+    })
 
-      return NextResponse.json(users.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.roles[0]?.name || 'STAFF',
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })))
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch users' },
-        { status: 500 }
-      )
-    }
-  },
-  { action: "READ", subject: "user" }
-)
+    return NextResponse.json(users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      roles: user.roles,
+      role: user.roles[0]?.name || 'STAFF',
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    })))
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    return NextResponse.json(
+      { message: 'Failed to fetch users', error: String(error) },
+      { status: 500 }
+    )
+  }
+}
 
 // POST: Create a new user
 export const POST = withPermission(
@@ -114,16 +114,6 @@ export const POST = withPermission(
         )
       }
 
-      // Get or create the role
-      const role = await prisma.role.upsert({
-        where: { name: data.role },
-        update: {},
-        create: {
-          name: data.role,
-          description: `${data.role} role`
-        }
-      })
-
       // Hash the password
       const hashedPassword = await hash(data.password, 12)
 
@@ -135,7 +125,7 @@ export const POST = withPermission(
           password: hashedPassword,
           roles: {
             connect: {
-              id: role.id
+              id: data.roleId
             }
           }
         },
@@ -148,6 +138,7 @@ export const POST = withPermission(
         id: user.id,
         name: user.name,
         email: user.email,
+        roles: user.roles,
         role: user.roles[0]?.name || 'STAFF',
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -213,6 +204,7 @@ export async function PUT(req: Request) {
         id: true,
         name: true,
         email: true,
+        roles: true,
         role: true,
         createdAt: true,
         updatedAt: true,

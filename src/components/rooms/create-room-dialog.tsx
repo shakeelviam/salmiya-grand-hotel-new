@@ -56,8 +56,8 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true)
-      // Create room in ERPNext
-      const response = await fetch('/api/erpnext/rooms', {
+      // Create room in database
+      const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

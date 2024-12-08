@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -35,8 +35,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { Users, Plus, Star, Upload } from "lucide-react"
+import { Users, Plus, Star } from "lucide-react"
 import { nationalities } from "@/lib/nationalities"
+import { GuestsTable } from "@/components/tables/guests-table"
 
 const guestSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -53,10 +54,49 @@ const guestSchema = z.object({
 
 type GuestFormValues = z.infer<typeof guestSchema>
 
+interface Guest {
+  id: string
+  name: string
+  email: string
+  phone: string
+  nationality: string
+  passportNumber: string
+  civilId?: string
+  visaNumber?: string
+  passportCopy: string
+  otherDocuments: string[]
+  vipStatus: boolean
+  notes?: string
+  createdAt: string
+}
+
 export default function GuestsPage() {
   const [open, setOpen] = useState(false)
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [guests, setGuests] = useState<Guest[]>([])
+
+  const fetchGuests = async () => {
+    try {
+      const response = await fetch("/api/guests")
+      if (!response.ok) {
+        throw new Error("Failed to fetch guests")
+      }
+      const data = await response.json()
+      setGuests(data)
+    } catch (error) {
+      console.error("Error fetching guests:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch guests",
+        variant: "destructive",
+      })
+    }
+  }
+
+  useEffect(() => {
+    fetchGuests()
+  }, [])
 
   const form = useForm<GuestFormValues>({
     resolver: zodResolver(guestSchema),
@@ -76,59 +116,57 @@ export default function GuestsPage() {
     try {
       setLoading(true)
       
-      // Handle passport copy upload
-      const passportFormData = new FormData()
-      passportFormData.append("file", data.passportCopy[0])
-      const passportRes = await fetch("/api/upload", {
-        method: "POST",
-        body: passportFormData,
-      })
-      const passportData = await passportRes.json()
+      // Create a single FormData instance for all data
+      const formData = new FormData()
       
-      // Handle other documents upload
-      let otherDocumentsUrls: string[] = []
+      // Add all text fields
+      formData.append("guestName", `${data.firstName} ${data.lastName}`)
+      formData.append("email", data.email)
+      formData.append("phone", data.mobileNumber)
+      formData.append("nationality", data.nationality)
+      formData.append("passportNumber", data.passportNumber)
+      if (data.civilId) formData.append("civilId", data.civilId)
+      if (data.visaNumber) formData.append("visaNumber", data.visaNumber)
+      
+      // Add passport copy
+      if (data.passportCopy?.[0]) {
+        formData.append("passportCopy", data.passportCopy[0])
+      }
+      
+      // Add other documents
       if (data.otherDocuments?.length) {
-        for (let file of Array.from(data.otherDocuments)) {
-          const formData = new FormData()
-          formData.append("file", file)
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          })
-          const fileData = await res.json()
-          otherDocumentsUrls.push(fileData.file_url)
-        }
+        Array.from(data.otherDocuments).forEach((file) => {
+          formData.append("otherDocuments", file)
+        })
       }
 
-      // Create guest
+      // Create guest with all data
       const response = await fetch("/api/guests", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...data,
-          passportCopy: passportData.file_url,
-          otherDocuments: otherDocumentsUrls,
-        }),
+        body: formData,
       })
 
+      const result = await response.json()
+      
       if (!response.ok) {
-        throw new Error("Failed to create guest")
+        throw new Error(result.error || "Failed to create guest")
       }
 
+      // Success handling
       toast({
         title: "Success",
         description: "Guest has been created successfully",
       })
       
+      // Reset form, close dialog, and refresh guest list
       setOpen(false)
       form.reset()
+      fetchGuests()
     } catch (error) {
-      console.error("Error creating guest:", error)
+      console.error("Guest creation error:", error)
       toast({
         title: "Error",
-        description: "Failed to create guest. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create guest",
         variant: "destructive",
       })
     } finally {
@@ -331,53 +369,9 @@ export default function GuestsPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2,350</div>
-            <p className="text-xs text-muted-foreground">
-              +180 this month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Checked In</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">145</div>
-            <p className="text-xs text-muted-foreground">
-              Current occupancy
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Loyalty Members</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">864</div>
-            <p className="text-xs text-muted-foreground">
-              Active members
-            </p>
-          </CardContent>
-        </Card>
+      <div className="rounded-md border">
+        <GuestsTable guests={guests} onUpdate={fetchGuests} />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Guests</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Guest list table will be implemented here */}
-        </CardContent>
-      </Card>
     </div>
   )
 }
