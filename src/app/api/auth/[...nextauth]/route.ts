@@ -1,7 +1,7 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
-import { prisma } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
 // Define custom session type
 declare module 'next-auth' {

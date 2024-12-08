@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 
 export async function fetchAPI(endpoint: string, method: string = 'GET', body?: any) {
     const options: RequestInit = {
@@ -20,8 +20,8 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
     return fetchAPI('/api/room-service?category=FOOD')
   }
 
-  export async function updateRoomServiceOrderStatus(orderId: string, status: string) {
-    return fetchAPI(`/api/room-service/${orderId}`, 'PATCH', { status })
+  export async function updateRoomServiceStatus(orderId: string, status: string) {
+    return fetchAPI(`/api/room-service/${orderId}/status`, 'PATCH', { status })
   }
 
   // Room Service Categories
@@ -157,7 +157,11 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
   }
 
   export async function getRoomServiceItems() {
-    return fetchAPI('/api/services?type=FOOD')
+    return fetchAPI('/api/room-service-items')
+  }
+
+  export async function getRoomServiceOrders() {
+    return fetchAPI('/api/room-service')
   }
 
   // Roles

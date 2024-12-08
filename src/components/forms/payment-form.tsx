@@ -23,11 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { formatCurrency, parseCurrency } from "@/lib/utils/currency"
 
 const formSchema = z.object({
   reservationId: z.string().min(1, "Reservation is required"),
   amount: z.string().refine(
-    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+    (val) => {
+      const amount = parseCurrency(val)
+      return !isNaN(amount) && amount > 0
+    },
     "Amount must be greater than 0"
   ),
   paymentMode: z.enum(["CASH", "CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "MOBILE_PAYMENT", "OTHER"], {
@@ -109,12 +113,8 @@ export function PaymentForm({ setOpen, payment, onSuccess }: Props) {
         },
         credentials: "include",
         body: JSON.stringify({
-          reservationId: values.reservationId,
-          amount: parseFloat(values.amount),
-          paymentMode: values.paymentMode,
-          transactionId: values.transactionId || null,
-          notes: values.notes || null,
-          status: "COMPLETED",
+          ...values,
+          amount: parseCurrency(values.amount),
         }),
       })
 

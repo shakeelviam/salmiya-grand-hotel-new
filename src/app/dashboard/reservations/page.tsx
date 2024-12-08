@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,11 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ActionButtons } from "@/components/ui/action-buttons"
 import { useToast } from "@/components/ui/use-toast"
 import { getReservations } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
-import { formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils/date"
 import { useRouter } from "next/navigation"
+import { formatCurrency } from "@/lib/utils/currency"
+import { ReservationActions } from "@/components/reservations/reservation-actions"
+import { ReservationsTable } from "@/components/tables/reservations-table"
 
 interface Reservation {
   id: string
@@ -224,70 +228,17 @@ export default function ReservationsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reservation ID</TableHead>
-                <TableHead>Guest</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>Check In</TableHead>
-                <TableHead>Check Out</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : filteredReservations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    No reservations found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredReservations.map((reservation) => (
-                  <TableRow 
-                    key={reservation.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => router.push(`/dashboard/reservations/${reservation.id}`)}
-                  >
-                    <TableCell>{reservation.id.slice(-6)}</TableCell>
-                    <TableCell>{reservation.user.name}</TableCell>
-                    <TableCell>
-                      {reservation.roomType.name}
-                      {reservation.room && ` (Room ${reservation.room.number})`}
-                    </TableCell>
-                    <TableCell>{formatDate(reservation.checkIn)}</TableCell>
-                    <TableCell>{formatDate(reservation.checkOut)}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(reservation.status)}>
-                        {reservation.status.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getPaymentColor(getPaymentStatus(reservation))}>
-                        {getPaymentStatus(reservation).replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      ${reservation.totalAmount.toFixed(2)}
-                      {reservation.pendingAmount > 0 && (
-                        <div className="text-xs text-muted-foreground">
-                          Pending: ${reservation.pendingAmount.toFixed(2)}
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <Suspense fallback={<div>Loading...</div>}>
+            <ReservationsTable 
+              reservations={filteredReservations}
+              getStatusColor={getStatusColor}
+              getPaymentStatus={getPaymentStatus}
+              getPaymentColor={getPaymentColor}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
+              ReservationActions={ReservationActions}
+            />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

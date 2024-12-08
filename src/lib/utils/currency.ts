@@ -12,3 +12,6 @@ export const parseCurrency = (value: string): number => {
   const cleanValue = value.replace(/[^0-9.-]/g, '')
   return parseFloat(cleanValue)
 }
+
+// Alias for backward compatibility
+export const formatKWD = formatCurrency

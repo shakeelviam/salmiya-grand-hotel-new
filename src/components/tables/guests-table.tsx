@@ -16,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Eye, Pencil, Power } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { ActionButtons } from "@/components/ui/action-buttons"
 
 interface Guest {
   id: string
@@ -93,39 +93,18 @@ export function GuestsTable({ guests, onUpdate }: GuestsTableProps) {
               <TableCell className="font-medium">{guest.name}</TableCell>
               <TableCell>{guest.email}</TableCell>
               <TableCell>{guest.phone}</TableCell>
-              <TableCell className="text-right space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
+              <TableCell className="text-right">
+                <ActionButtons
+                  onView={() => {
                     setSelectedGuest(guest)
                     setViewDialogOpen(true)
                   }}
-                >
-                  <Eye className="h-4 w-4" />
-                  <span className="sr-only">View</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
+                  onEdit={() => {
                     // TODO: Implement edit functionality
                   }}
-                >
-                  <Pencil className="h-4 w-4" />
-                  <span className="sr-only">Edit</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleToggleStatus(guest.id, guest.isActive)}
-                  className={guest.isActive ? "text-destructive" : "text-green-600"}
-                >
-                  <Power className="h-4 w-4" />
-                  <span className="sr-only">
-                    {guest.isActive ? "Disable" : "Enable"}
-                  </span>
-                </Button>
+                  onToggle={() => handleToggleStatus(guest.id, guest.isActive)}
+                  isActive={guest.isActive}
+                />
               </TableCell>
             </TableRow>
           ))}

@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
+import { nanoid } from "nanoid"
 
 export async function GET(req: Request) {
   try {
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { roomTypeId, guestId, checkIn, checkOut, adults, children, extraBeds, specialRequests, advanceAmount, paymentModeId } = json
+    const { roomTypeId, guestId, checkIn, checkOut, adults, children, extraBeds, specialRequests, advanceAmount, paymentMode } = json
 
     // Get room type details for pricing
     const roomType = await prisma.roomType.findUnique({
@@ -112,16 +113,16 @@ export async function POST(req: Request) {
     })
 
     // If advance payment is made, create a payment record
-    if (advanceAmount > 0 && paymentModeId) {
+    if (advanceAmount > 0 && paymentMode) {
       await prisma.payment.create({
         data: {
           amount: advanceAmount,
-          paymentType: "ADVANCE",
+          paymentMode,
           status: "COMPLETED",
-          receiptNumber: `ADV-${Date.now()}`,
+          receiptNumber: `ADV-${nanoid(8).toUpperCase()}`,
           reservationId: reservation.id,
           userId: session.user.id,
-          paymentModeId,
+          notes: "Advance payment for reservation",
         },
       })
     }

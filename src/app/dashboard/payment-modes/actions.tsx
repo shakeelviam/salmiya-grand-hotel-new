@@ -1,33 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, Pencil, Trash } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { PaymentModeForm } from "@/components/forms/payment-mode-form"
 import { useToast } from "@/components/ui/use-toast"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { ActionButtons } from "@/components/ui/action-buttons"
 import type { PaymentMode } from "./columns"
 
 interface PaymentModeActionsProps {
@@ -35,10 +21,43 @@ interface PaymentModeActionsProps {
 }
 
 export function PaymentModeActions({ data }: PaymentModeActionsProps) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  const toggleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/payment-modes/${data.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive: !data.isActive }),
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update payment mode status")
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payment-modes"] })
+      toast({
+        title: "Success",
+        description: `Payment mode ${data.isActive ? "disabled" : "enabled"} successfully`,
+      })
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update payment mode status",
+        variant: "destructive",
+      })
+    },
+  })
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -54,7 +73,7 @@ export function PaymentModeActions({ data }: PaymentModeActionsProps) {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["paymentModes"] })
+      queryClient.invalidateQueries({ queryKey: ["payment-modes"] })
       setShowDeleteDialog(false)
       toast({
         title: "Success",
@@ -72,49 +91,36 @@ export function PaymentModeActions({ data }: PaymentModeActionsProps) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setShowDeleteDialog(true)}
-            className="text-red-600"
-          >
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ActionButtons
+        onView={() => {}}
+        onEdit={() => setShowEditDialog(true)}
+        onToggle={() => toggleMutation.mutate()}
+        isActive={data.isActive}
+      />
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the payment mode &quot;{data.name}&quot;.
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the payment mode "{data.name}".
               This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
               onClick={() => deleteMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>

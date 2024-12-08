@@ -53,6 +53,13 @@ model User {
   verifyTokenExpiry DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
+  expenses          Expense[]
+  assignedTasks   MaintenanceTask[] @relation("AssignedTasks")
+  createdTasks    MaintenanceTask[] @relation("CreatedTasks")
+  completedTasks  MaintenanceTask[] @relation("CompletedTasks")
+  assignedHousekeepingTasks   HousekeepingTask[] @relation("AssignedHousekeepingTasks")
+  createdHousekeepingTasks    HousekeepingTask[] @relation("CreatedHousekeepingTasks")
+  completedHousekeepingTasks  HousekeepingTask[] @relation("CompletedHousekeepingTasks")
 }
 
 model VerificationToken {
@@ -136,6 +143,8 @@ model Room {
   roomType     RoomType      @relation(fields: [roomTypeId], references: [id])
   reservations Reservation[]
   roomServices RoomService[]
+  maintenanceTasks MaintenanceTask[]
+  housekeepingTasks HousekeepingTask[]
 }
 
 model Reservation {
@@ -342,11 +351,13 @@ enum RoomStatus {
 }
 
 enum ReservationStatus {
-  RESERVED_UNPAID // Initial state when reservation is made without payment
-  CONFIRMED // Payment received, awaiting check-in
-  CHECKED_IN // Guest has arrived and checked in
-  CHECKED_OUT // Guest has completed stay and settled all bills
-  CANCELLED // Reservation was cancelled
+  RESERVED_UNPAID
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  REFUNDED
+  COMPLETED
 }
 
 enum ServiceType {
@@ -373,4 +384,56 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  description String
+  amount      Float
+  date        DateTime
+  status      String   @default("pending") // pending, approved
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById String
+}
+
+model MaintenanceTask {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  priority      String    // high, medium, low
+  status        String    @default("pending") // pending, in-progress, completed, cancelled
+  roomId        String?
+  room          Room?     @relation(fields: [roomId], references: [id])
+  assignedToId  String
+  assignedTo    User      @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdById   String
+  createdBy     User      @relation("CreatedTasks", fields: [createdById], references: [id])
+  completedById String?
+  completedBy   User?     @relation("CompletedTasks", fields: [completedById], references: [id])
+  dueDate       DateTime
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model HousekeepingTask {
+  id            String    @id @default(cuid())
+  type          String    // cleaning, turndown, inspection, supplies, laundry
+  priority      String    // high, medium, low
+  status        String    @default("pending") // pending, completed
+  roomId        String
+  room          Room      @relation(fields: [roomId], references: [id])
+  assignedToId  String
+  assignedTo    User      @relation("AssignedHousekeepingTasks", fields: [assignedToId], references: [id])
+  createdById   String
+  createdBy     User      @relation("CreatedHousekeepingTasks", fields: [createdById], references: [id])
+  completedById String?
+  completedBy   User?     @relation("CompletedHousekeepingTasks", fields: [completedById], references: [id])
+  dueDate       DateTime
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

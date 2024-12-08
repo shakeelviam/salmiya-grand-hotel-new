@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatKWD } from "@/lib/currency"
+import { formatCurrency } from "@/lib/utils/currency"
 import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
@@ -161,15 +161,22 @@ export function MenuItemCard({ item, category }: Props) {
       </div>
       <div className="p-6">
         <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-lg">{item.name}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {item.description}
-            </p>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold">{item.name}</h3>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+              <div className="text-right">
+                <div className="font-semibold">{formatCurrency(item.price, 'KWD', 3)}</div>
+                <Badge variant={item.isActive ? "default" : "secondary"}>
+                  {item.isActive ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <Badge variant="outline">{category}</Badge>
-            <p className="font-bold text-lg">{formatKWD(item.price)}</p>
           </div>
         </div>
       </div>

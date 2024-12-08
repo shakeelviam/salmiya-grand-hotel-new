@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { ChevronDown, PanelLeft } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/styles"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useSidebar } from '@/components/providers/sidebar-provider'

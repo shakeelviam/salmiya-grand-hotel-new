@@ -24,7 +24,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
-import { getActiveReservations, getRoomServiceItems } from "@/lib/api"
+import { getActiveReservations, getRoomServiceItems, getRoomServiceOrders } from "@/lib/api"
+import { RoomServiceOrdersTable } from "@/components/tables/room-service-orders-table"
 
 const roomServiceSchema = z.object({
   reservation: z.string().min(1, "Reservation is required"),
@@ -42,25 +43,29 @@ export default function RoomServicePage() {
   const [items, setItems] = useState([])
   const [reservations, setReservations] = useState([])
   const [menuItems, setMenuItems] = useState([])
+  const [orders, setOrders] = useState([])
+
+  const loadData = async () => {
+    try {
+      const [reservationsData, itemsData, ordersData] = await Promise.all([
+        getActiveReservations(),
+        getRoomServiceItems(),
+        getRoomServiceOrders()
+      ])
+      setReservations(reservationsData?.data || [])
+      setMenuItems(itemsData?.data || [])
+      setOrders(ordersData?.data || [])
+    } catch (error) {
+      console.error("Error loading data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load data",
+        variant: "destructive"
+      })
+    }
+  }
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [reservationsData, itemsData] = await Promise.all([
-          getActiveReservations(),
-          getRoomServiceItems()
-        ])
-        setReservations(reservationsData.data)
-        setMenuItems(itemsData.data)
-      } catch (error) {
-        console.error("Error loading data:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load reservations and items",
-          variant: "destructive"
-        })
-      }
-    }
     loadData()
   }, [])
 
@@ -95,6 +100,7 @@ export default function RoomServicePage() {
       })
 
       form.reset()
+      loadData()
     } catch (error) {
       toast({
         title: "Error",
@@ -111,6 +117,18 @@ export default function RoomServicePage() {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Room Service Orders</h2>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Room Service Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RoomServiceOrdersTable 
+            orders={orders} 
+            onUpdate={loadData}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -134,9 +152,12 @@ export default function RoomServicePage() {
                           <SelectValue placeholder="Select reservation" />
                         </SelectTrigger>
                         <SelectContent>
-                          {reservations.map((reservation: any) => (
-                            <SelectItem key={reservation.name} value={reservation.name}>
-                              Room {reservation.room} - {reservation.guest_name}
+                          {(reservations || []).map((reservation: any) => (
+                            <SelectItem 
+                              key={reservation.id} 
+                              value={reservation.id}
+                            >
+                              Room {reservation.roomNumber || 'Unassigned'} - {reservation.guestName}
                             </SelectItem>
                           ))}
                         </SelectContent>

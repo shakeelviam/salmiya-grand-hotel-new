@@ -1,22 +1,60 @@
-import { prisma } from "@/lib/db"
-import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
+import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+
+export async function GET(
+  req: Request,
+  { params }: { params: { roomServiceId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    const { roomServiceId } = params
+    const roomService = await prisma.roomService.findUnique({
+      where: { id: roomServiceId },
+      include: {
+        room: true,
+        service: {
+          include: {
+            category: true,
+          },
+        },
+      },
+    })
+
+    if (!roomService) {
+      return NextResponse.json(
+        { error: "Room service order not found" },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(roomService)
+  } catch (error) {
+    console.error("[ROOM_SERVICE_GET]", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
 
 export async function PATCH(
   req: Request,
   { params }: { params: { roomServiceId: string } }
 ) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions)
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    const { roomServiceId } = params
     const json = await req.json()
     const { status } = json
 
     const roomService = await prisma.roomService.findUnique({
-      where: { id: params.roomServiceId },
+      where: { id: roomServiceId },
     })
 
     if (!roomService) {
@@ -25,7 +63,7 @@ export async function PATCH(
 
     // Update room service status
     const updatedRoomService = await prisma.roomService.update({
-      where: { id: params.roomServiceId },
+      where: { id: roomServiceId },
       data: { status },
       include: {
         room: true,
@@ -62,13 +100,15 @@ export async function DELETE(
   { params }: { params: { roomServiceId: string } }
 ) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions)
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    const { roomServiceId } = params
+
     const roomService = await prisma.roomService.findUnique({
-      where: { id: params.roomServiceId },
+      where: { id: roomServiceId },
       include: {
         reservation: true,
       },
@@ -84,7 +124,7 @@ export async function DELETE(
 
     // Update room service status to CANCELLED
     const cancelledRoomService = await prisma.roomService.update({
-      where: { id: params.roomServiceId },
+      where: { id: roomServiceId },
       data: { status: "CANCELLED" },
     })
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { z } from "zod"
-import { prisma } from "@/lib/db"
 import { authOptions } from "@/lib/auth"
 
 // Validation schema for role

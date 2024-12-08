@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 import { writeFile } from "fs/promises"
 import { join } from "path"
 import { v4 as uuidv4 } from "uuid"

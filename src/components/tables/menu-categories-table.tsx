@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { ActionButtons } from "@/components/ui/action-buttons"
 import { useToast } from "@/components/ui/use-toast"
 
 interface Category {
@@ -54,6 +55,10 @@ export function MenuCategoriesTable() {
     return <div>No categories found. Create one to get started.</div>
   }
 
+  const handleToggleStatus = (id: string, isActive: boolean) => {
+    // TO DO: implement handleToggleStatus logic
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -61,6 +66,7 @@ export function MenuCategoriesTable() {
           <TableHead>Name</TableHead>
           <TableHead>Description</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -72,6 +78,14 @@ export function MenuCategoriesTable() {
               <Badge variant={category.isActive ? "success" : "destructive"}>
                 {category.isActive ? "Active" : "Inactive"}
               </Badge>
+            </TableCell>
+            <TableCell>
+              <ActionButtons
+                onView={() => {}}
+                onEdit={() => {}}
+                onToggle={() => handleToggleStatus(category.id, category.isActive)}
+                isActive={category.isActive}
+              />
             </TableCell>
           </TableRow>
         ))}

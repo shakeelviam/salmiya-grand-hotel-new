@@ -35,6 +35,7 @@ const reservationSchema = z.object({
   children: z.coerce.number().min(0, "Children cannot be negative"),
   extraBeds: z.coerce.number().min(0, "Extra beds cannot be negative"),
   advanceAmount: z.coerce.number().min(0, "Advance amount cannot be negative"),
+  paymentMode: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -78,6 +79,7 @@ export function ReservationForm({ onSuccess }: Props) {
       children: 0,
       extraBeds: 0,
       advanceAmount: 0,
+      paymentMode: "",
       notes: "",
     },
   })
@@ -174,6 +176,16 @@ export function ReservationForm({ onSuccess }: Props) {
     try {
       setLoading(true)
       const totalAmount = calculateTotal()
+
+      // Validate payment mode if advance amount is provided
+      if (values.advanceAmount > 0 && !values.paymentMode) {
+        toast({
+          title: "Error",
+          description: "Please select a payment mode for the advance payment",
+          variant: "destructive"
+        })
+        return
+      }
 
       const response = await fetch('/api/reservations', {
         method: 'POST',
@@ -413,6 +425,36 @@ export function ReservationForm({ onSuccess }: Props) {
                     {...field} 
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Payment Mode */}
+          <FormField
+            control={form.control}
+            name="paymentMode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Mode</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={form.watch('advanceAmount') <= 0}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment mode" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="CASH">Cash</SelectItem>
+                    <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                    <SelectItem value="DEBIT_CARD">Debit Card</SelectItem>
+                    <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                    <SelectItem value="MOBILE_PAYMENT">Mobile Payment</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

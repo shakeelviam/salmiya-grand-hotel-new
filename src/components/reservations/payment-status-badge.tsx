@@ -1,6 +1,7 @@
 'use client'
 
 import { Badge } from "@/components/ui/badge"
+import { formatCurrency } from "@/lib/utils/currency"
 import {
   Tooltip,
   TooltipContent,
@@ -20,7 +21,6 @@ import {
   Ban,
   RefreshCcw
 } from "lucide-react"
-import { formatCurrency } from "@/lib/utils"
 
 export type PaymentStatus = 
   | 'PENDING'

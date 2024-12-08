@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { getRoomServiceItems } from "@/lib/api"
 import { toast } from "@/components/ui/use-toast"
-import { formatKWD } from "@/lib/currency"
+import { formatCurrency } from "@/lib/utils/currency"
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -171,7 +171,7 @@ export default function RoomServiceMenu() {
                   <p className="text-sm text-muted-foreground">
                     {item.description}
                   </p>
-                  <p className="font-medium">{formatKWD(item.standard_rate)}</p>
+                  <p className="font-medium">{formatCurrency(item.standard_rate, 'KWD', 3)}</p>
                 </div>
                 <Button onClick={() => addToOrder(item)}>
                   Add to Order
@@ -195,7 +195,7 @@ export default function RoomServiceMenu() {
                       <div className="flex-1">
                         <p className="font-medium">{menuItem?.item_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatKWD(menuItem?.standard_rate || 0)} × {item.quantity}
+                          {formatCurrency(menuItem?.standard_rate || 0, 'KWD', 3)} × {item.quantity}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -228,10 +228,10 @@ export default function RoomServiceMenu() {
 
                 <div className="pt-4 border-t">
                   <p className="font-semibold text-lg">
-                    Total: {formatKWD(selectedItems.reduce((total, item) => {
+                    Total: {formatCurrency(selectedItems.reduce((total, item) => {
                       const menuItem = menuItems.find(m => m.name === item.item)
                       return total + (menuItem?.standard_rate || 0) * item.quantity
-                    }, 0))}
+                    }, 0), 'KWD', 3)}
                   </p>
                 </div>
 

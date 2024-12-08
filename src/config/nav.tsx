@@ -7,8 +7,6 @@ import {
   Settings,
   UserCircle,
   Utensils,
-  Bell,
-  ClipboardList,
   Building2,
   BarChart3,
   MessageSquare,
@@ -21,6 +19,7 @@ import {
   Shield,
   List,
   CreditCard,
+  ClipboardList,
 } from "lucide-react"
 
 export const navItems = [
@@ -149,43 +148,34 @@ export const navItems = [
         icon: ClipboardList,
         description: "Room cleaning status",
       },
-      {
-        title: "Notifications",
-        href: "/dashboard/notifications",
-        icon: Bell,
-        description: "System alerts and messages",
-      },
     ],
   },
   {
-    title: "Finance",
+    title: "Accounting & Billing",
     items: [
       {
-        title: "Billing",
+        title: "Invoices",
         href: "/dashboard/billing",
         icon: Receipt,
-        description: "Invoices and payments",
+        description: "Generate and manage invoices",
+      },
+      {
+        title: "Payments",
+        href: "/dashboard/payments",
+        icon: CreditCard,
+        description: "View and process payments",
+      },
+      {
+        title: "Payment Modes",
+        href: "/dashboard/payment-modes",
+        icon: CreditCard,
+        description: "Configure payment methods",
       },
       {
         title: "Expenses",
         href: "/dashboard/expenses",
         icon: Wallet,
-        description: "Cost management",
-      },
-    ],
-  },
-  {
-    title: "Payments",
-    items: [
-      {
-        title: "Payment Modes",
-        href: "/dashboard/payment-modes",
-        icon: CreditCard,
-      },
-      {
-        title: "All Payments",
-        href: "/dashboard/payments",
-        icon: Receipt,
+        description: "Track and manage expenses",
       },
     ],
   },
