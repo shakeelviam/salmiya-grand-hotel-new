@@ -15,6 +15,7 @@ import { ActionButtons } from "@/components/ui/action-buttons"
 import { formatDate } from "@/lib/utils/date"
 import { formatCurrency } from "@/lib/utils/currency"
 import { updateRoomServiceStatus } from "@/lib/api"
+import { Loader2 } from "lucide-react"
 
 interface RoomServiceOrder {
   id: string
@@ -39,15 +40,20 @@ interface RoomServiceOrdersTableProps {
 }
 
 export function RoomServiceOrdersTable({ orders, onUpdate }: RoomServiceOrdersTableProps) {
-  const [loading, setLoading] = useState(false)
+  const [loadingOrder, setLoadingOrder] = useState<string | null>(null)
   const { toast } = useToast()
 
   const handleToggleStatus = async (orderId: string, currentStatus: string) => {
     try {
-      setLoading(true)
+      setLoadingOrder(orderId)
       const newStatus = currentStatus === "PENDING" ? "CANCELLED" : "PENDING"
       
-      await updateRoomServiceStatus(orderId, newStatus)
+      const response = await updateRoomServiceStatus(orderId, newStatus)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to update order status")
+      }
 
       toast({
         title: "Success",
@@ -59,11 +65,11 @@ export function RoomServiceOrdersTable({ orders, onUpdate }: RoomServiceOrdersTa
       console.error("Error updating order status:", error)
       toast({
         title: "Error",
-        description: "Failed to update order status",
+        description: error instanceof Error ? error.message : "Failed to update order status",
         variant: "destructive",
       })
     } finally {
-      setLoading(false)
+      setLoadingOrder(null)
     }
   }
 
@@ -122,22 +128,26 @@ export function RoomServiceOrdersTable({ orders, onUpdate }: RoomServiceOrdersTa
               <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
               <TableCell>{formatDate(order.createdAt)}</TableCell>
               <TableCell className="text-right">
-                <ActionButtons
-                  onView={() => {
-                    // TODO: Implement view functionality
-                    console.log("View order", order.id)
-                  }}
-                  onEdit={order.status === "PENDING" ? () => {
-                    // TODO: Implement edit functionality
-                    console.log("Edit order", order.id)
-                  } : undefined}
-                  onToggle={order.status !== "DELIVERED" ? () => 
-                    handleToggleStatus(order.id, order.status)
-                  : undefined}
-                  isActive={order.status !== "CANCELLED"}
-                  hideToggle={order.status === "DELIVERED"}
-                  hideEdit={order.status !== "PENDING"}
-                />
+                {loadingOrder === order.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                ) : (
+                  <ActionButtons
+                    onView={() => {
+                      // TODO: Implement view functionality
+                      console.log("View order", order.id)
+                    }}
+                    onEdit={order.status === "PENDING" ? () => {
+                      // TODO: Implement edit functionality
+                      console.log("Edit order", order.id)
+                    } : undefined}
+                    onToggle={order.status !== "DELIVERED" ? () => 
+                      handleToggleStatus(order.id, order.status)
+                    : undefined}
+                    isActive={order.status !== "CANCELLED"}
+                    hideToggle={order.status === "DELIVERED"}
+                    hideEdit={order.status !== "PENDING"}
+                  />
+                )}
               </TableCell>
             </TableRow>
           ))

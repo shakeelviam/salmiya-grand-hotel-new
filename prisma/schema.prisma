@@ -134,6 +134,9 @@ model Room {
   number       String        @unique
   floor        String
   description  String?
+  descriptionAr String?
+  amenities    String?
+  notes        String?
   isActive     Boolean       @default(true)
   isAvailable  Boolean       @default(true)
   roomTypeId   String
@@ -162,7 +165,10 @@ model Reservation {
   totalAmount     Float // Total bill (room + extra bed + services)
   advanceAmount   Float             @default(0) // Amount paid in advance
   pendingAmount   Float // Amount pending to be paid
-  status          ReservationStatus @default(RESERVED_UNPAID)
+  status          ReservationStatus @default(PENDING)
+  noShowDate      DateTime?
+  noShowFee       Float?
+  activityLogs    ActivityLog[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   userId          String
@@ -176,6 +182,7 @@ model Reservation {
   payments        Payment[]
   bills           Bill[]
   Order           Order[]
+  requiresAdminRefund Boolean @default(false)
 }
 
 model Bill {
@@ -346,11 +353,12 @@ model Guest {
 enum RoomStatus {
   AVAILABLE
   OCCUPIED
+  CLEANING
   MAINTENANCE
-  RESERVED
 }
 
 enum ReservationStatus {
+  PENDING
   RESERVED_UNPAID
   CONFIRMED
   CHECKED_IN
@@ -358,6 +366,7 @@ enum ReservationStatus {
   CANCELLED
   REFUNDED
   COMPLETED
+  NO_SHOW
 }
 
 enum ServiceType {
@@ -436,4 +445,27 @@ model HousekeepingTask {
   completedAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model ActivityLog {
+  id              String    @id @default(cuid())
+  action          String
+  description     String
+  createdAt       DateTime  @default(now())
+  reservationId   String?
+  reservation     Reservation? @relation(fields: [reservationId], references: [id])
+  
+  @@index([reservationId])
+}
+
+model HotelSettings {
+  id                    String    @id @default(cuid())
+  checkInTime          String    // Format: HH:mm
+  checkOutTime         String    // Format: HH:mm
+  earlyCheckOutPolicy  Json      // { type: "PERCENTAGE" | "FIXED" | "NO_PENALTY", value: number }
+  noShowPolicy         Json      // { retainAdvance: boolean, refundPercentage: number }
+  lateCheckOutPolicy   Json      // { type: "HOURLY" | "FIXED", value: number }
+  autoCheckOut         Json      // { enabled: boolean, gracePeriod: number }
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

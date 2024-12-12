@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { PermissionAction } from "@prisma/client"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
@@ -10,18 +10,19 @@ export type Permission = {
 }
 
 export async function checkPermission(
-  action: PermissionAction,
-  subject: string
+  userId: string,
+  permissionName: string
 ): Promise<boolean> {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) return false
-
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { id: userId },
       include: {
-        roles: true,
-      },
+        roles: {
+          include: {
+            permissions: true
+          }
+        }
+      }
     })
 
     if (!user) return false
@@ -30,43 +31,71 @@ export async function checkPermission(
     const isAdmin = user.roles.some(role => role.name === "ADMIN")
     if (isAdmin) return true
 
-    // Check if user has manager role
-    const isManager = user.roles.some(role => role.name === "MANAGER")
-    if (isManager) return true
+    // Check if user has the specific permission through any of their roles
+    const hasPermission = user.roles.some(role =>
+      role.permissions.some(permission => permission.name === permissionName)
+    )
 
-    // Check if user has staff role and is trying to read
-    const isStaff = user.roles.some(role => role.name === "STAFF")
-    if (isStaff && action === "READ") {
-      return true
-    }
-
-    return false
+    return hasPermission
   } catch (error) {
     console.error("Permission check error:", error)
     return false
   }
 }
 
-export function withPermission(handler: Function, permission: Permission) {
-  return async function (req: Request, context: any) {
-    try {
-      const hasPermission = await checkPermission(permission.action, permission.subject)
+export async function checkPermissions(action: PermissionAction) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) {
+    return false
+  }
 
-      if (!hasPermission) {
-        return NextResponse.json(
-          { error: "Unauthorized: Insufficient permissions" },
-          { status: 403 }
-        )
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: {
+      roles: {
+        include: {
+          permissions: true
+        }
       }
-
-      return await handler(req, context)
-    } catch (error) {
-      console.error("Permission check error:", error)
-      return NextResponse.json(
-        { error: "Internal server error during permission check" },
-        { status: 500 }
-      )
     }
+  })
+
+  if (!user) return false
+
+  // Admin has all permissions
+  if (user.roles.some(role => role.name === "ADMIN")) {
+    return true
+  }
+
+  // Check if any of the user's roles have the required permission
+  return user.roles.some(role =>
+    role.permissions.some(permission => permission.action === action)
+  )
+}
+
+export function withPermission(handler: Function, permission: Permission) {
+  return async (req: Request, context: any) => {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const hasPermission = await checkPermissions(permission.action)
+    if (!hasPermission) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
+    }
+
+    return handler(req, context)
+  }
+}
+
+export function requirePermissions(action: PermissionAction) {
+  return async (req: Request) => {
+    const hasPermission = await checkPermissions(action)
+    if (!hasPermission) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
+    }
+    return NextResponse.next()
   }
 }
 
@@ -79,26 +108,19 @@ export const defaultPermissions = {
     { action: "DELETE", subject: "all" },
   ],
   MANAGER: [
-    { action: "CREATE", subject: "room" },
-    { action: "READ", subject: "room" },
-    { action: "UPDATE", subject: "room" },
-    { action: "CREATE", subject: "roomType" },
-    { action: "READ", subject: "roomType" },
-    { action: "UPDATE", subject: "roomType" },
-    { action: "CREATE", subject: "reservation" },
-    { action: "READ", subject: "reservation" },
-    { action: "UPDATE", subject: "reservation" },
-    { action: "CREATE", subject: "payment" },
-    { action: "READ", subject: "payment" },
-    { action: "UPDATE", subject: "payment" },
+    { action: "CREATE", subject: "reservations" },
+    { action: "READ", subject: "reservations" },
+    { action: "UPDATE", subject: "reservations" },
+    { action: "CREATE", subject: "rooms" },
+    { action: "READ", subject: "rooms" },
+    { action: "UPDATE", subject: "rooms" },
+    { action: "CREATE", subject: "payments" },
+    { action: "READ", subject: "payments" },
+    { action: "UPDATE", subject: "payments" },
   ],
   STAFF: [
-    { action: "READ", subject: "room" },
-    { action: "READ", subject: "roomType" },
-    { action: "CREATE", subject: "reservation" },
-    { action: "READ", subject: "reservation" },
-    { action: "UPDATE", subject: "reservation" },
-    { action: "CREATE", subject: "payment" },
-    { action: "READ", subject: "payment" },
+    { action: "READ", subject: "reservations" },
+    { action: "READ", subject: "rooms" },
+    { action: "READ", subject: "payments" },
   ],
-} as const
+}

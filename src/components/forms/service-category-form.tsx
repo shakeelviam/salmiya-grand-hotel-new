@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
 
 const serviceCategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -48,6 +49,8 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
   })
 
   async function onSubmit(values: z.infer<typeof serviceCategorySchema>) {
+    if (loading) return
+
     try {
       setLoading(true)
       const url = initialData ? `/api/service-categories/${initialData.id}` : '/api/service-categories'
@@ -61,9 +64,10 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
         body: JSON.stringify(values),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to save service category')
+        throw new Error(data.message || 'Failed to save service category')
       }
 
       toast({
@@ -98,7 +102,7 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -112,7 +116,7 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Textarea {...field} disabled={loading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -125,7 +129,11 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                disabled={loading}
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -141,8 +149,9 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
           )}
         />
 
-        <Button type="submit" disabled={loading}>
-          {loading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update" : "Create")}
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {initialData ? 'Update' : 'Create'} Service Category
         </Button>
       </form>
     </Form>

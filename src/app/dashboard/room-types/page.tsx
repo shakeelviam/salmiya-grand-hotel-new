@@ -4,14 +4,6 @@ import { useState, useEffect } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -20,7 +12,9 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { RoomTypeForm } from "@/components/forms/room-type-form"
-import { formatCurrency } from "@/lib/utils/currency"
+import { RoomTypesTable } from "@/components/tables/room-types-table"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type RoomType = {
   id: string
@@ -30,6 +24,7 @@ type RoomType = {
   childCapacity: number
   basePrice: number
   extraBedCharge: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -70,16 +65,27 @@ export default function RoomTypesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-[150px]" />
+          <Skeleton className="h-10 w-[150px]" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-[200px]" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[400px] w-full" />
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Room Types</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Room Types</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -96,32 +102,17 @@ export default function RoomTypesPage() {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Adult Capacity</TableHead>
-              <TableHead>Child Capacity</TableHead>
-              <TableHead>Base Price</TableHead>
-              <TableHead>Extra Bed Charge</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roomTypes.map((roomType) => (
-              <TableRow key={roomType.id}>
-                <TableCell>{roomType.name}</TableCell>
-                <TableCell>{roomType.description}</TableCell>
-                <TableCell>{roomType.adultCapacity}</TableCell>
-                <TableCell>{roomType.childCapacity}</TableCell>
-                <TableCell>{formatCurrency(roomType.basePrice)}</TableCell>
-                <TableCell>{formatCurrency(roomType.extraBedCharge)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Room Types</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RoomTypesTable 
+            roomTypes={roomTypes}
+            onUpdate={fetchRoomTypes}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }

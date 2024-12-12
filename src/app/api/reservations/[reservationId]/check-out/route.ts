@@ -1,69 +1,93 @@
-import { NextResponse } from "next/server"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { checkPermission } from "@/lib/permissions";
 
 export async function POST(
-  req: Request,
+  request: Request,
   { params }: { params: { reservationId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    // Check authentication
+    const session = await getServerSession(authOptions);
     if (!session) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json(
+        { message: "Unauthorized. Please log in." },
+        { status: 401 }
+      );
     }
 
-    const body = await req.json()
-    const { settleAmount } = body
+    // Check permissions
+    const hasPermission = await checkPermission(session.user.id, "manage_reservations");
+    if (!hasPermission) {
+      return NextResponse.json(
+        { message: "Permission denied. You cannot perform check-out." },
+        { status: 403 }
+      );
+    }
 
-    // Get the reservation
+    const reservationId = params.reservationId;
+    const data = await request.json();
+    const settleAmount = data.settleAmount ?? 0; // Default to 0 if not provided
+
+    // Validate reservation exists and is checked in
     const reservation = await prisma.reservation.findUnique({
-      where: { id: params.reservationId },
-      include: { room: true },
-    })
+      where: { id: reservationId },
+      include: {
+        room: true,
+        payments: true
+      }
+    });
 
     if (!reservation) {
-      return new NextResponse("Reservation not found", { status: 404 })
+      return NextResponse.json(
+        { message: "Reservation not found." },
+        { status: 404 }
+      );
     }
 
     if (reservation.status !== "CHECKED_IN") {
-      return new NextResponse("Reservation must be checked in before check-out", {
-        status: 400,
-      })
+      return NextResponse.json(
+        { message: "Reservation must be checked in before check-out." },
+        { status: 400 }
+      );
     }
 
-    // If there's a settlement amount, create a payment record
-    if (settleAmount > 0) {
-      await prisma.payment.create({
+    if (reservation.isCheckedOut) {
+      return NextResponse.json(
+        { message: "Reservation is already checked out." },
+        { status: 400 }
+      );
+    }
+
+    // Update reservation and room status
+    const [updatedReservation] = await prisma.$transaction([
+      prisma.reservation.update({
+        where: { id: reservationId },
         data: {
-          amount: settleAmount,
-          reservationId: params.reservationId,
-          userId: session.user.id,
           status: "COMPLETED",
-        },
-      })
-    }
-
-    // Make room available again
-    if (reservation.roomId) {
-      await prisma.room.update({
+          isCheckedOut: true,
+          checkOutDate: new Date(),
+          settleAmount: settleAmount
+        }
+      }),
+      prisma.room.update({
         where: { id: reservation.roomId },
-        data: { isAvailable: true },
+        data: { status: "CLEANING" }  // Set to cleaning after check-out
       })
-    }
+    ]);
 
-    // Update reservation
-    const updatedReservation = await prisma.reservation.update({
-      where: { id: params.reservationId },
-      data: {
-        status: "COMPLETED",
-        checkOutTime: new Date(),
-      },
-    })
+    return NextResponse.json({
+      message: "Check-out successful",
+      reservation: updatedReservation
+    });
 
-    return NextResponse.json(updatedReservation)
   } catch (error) {
-    console.error("[RESERVATION_CHECK_OUT]", error)
-    return new NextResponse("Internal error", { status: 500 })
+    console.error("[RESERVATION_CHECKOUT]", error);
+    return NextResponse.json(
+      { message: "An error occurred during check-out." },
+      { status: 500 }
+    );
   }
 }

@@ -38,6 +38,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
+import { formatCurrency } from "@/lib/utils"
 
 interface ReservationActionsProps {
   reservation: {
@@ -46,6 +47,7 @@ interface ReservationActionsProps {
     roomId?: string
     pendingAmount: number
     roomTypeId: string
+    totalAmount: number
   }
 }
 
@@ -88,6 +90,7 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showRefundDialog, setShowRefundDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -116,18 +119,15 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
   })
 
   // Add room fetching with loading and error states
-  const { data: availableRooms, isLoading: isLoadingRooms, error: roomsError } = useQuery({
+  const { data: roomsResponse, isLoading: isLoadingRooms, error: roomsError } = useQuery({
     queryKey: ["available-rooms", reservation.roomTypeId, showCheckInDialog],
     queryFn: async () => {
-      console.log("[FETCH_ROOMS] Fetching rooms for roomTypeId:", reservation.roomTypeId)
       const response = await fetch(`/api/rooms/available?roomTypeId=${reservation.roomTypeId}`)
       if (!response.ok) {
         const error = await response.json()
-        console.error("[FETCH_ROOMS] Error:", error)
         throw new Error(error.message || "Failed to fetch rooms")
       }
       const data = await response.json()
-      console.log("[FETCH_ROOMS] Received rooms:", data)
       return data
     },
     enabled: showCheckInDialog && !!reservation.roomTypeId,
@@ -135,6 +135,8 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
     refetchOnWindowFocus: false,
     retry: 1
   })
+
+  const availableRooms = roomsResponse?.data || []
 
   const handlePayment = async (values: z.infer<typeof paymentSchema>) => {
     try {
@@ -151,7 +153,7 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
         throw new Error(data.message || "Failed to process payment")
       }
 
-      toast({ title: "Success", description: "Payment processed successfully" })
+      toast({ title: "Success", description: `Payment of ${formatCurrency(values.amount)} processed successfully` })
       setShowPaymentDialog(false)
       paymentForm.reset()
       queryClient.invalidateQueries(["reservations"])
@@ -198,33 +200,44 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
 
   const handleCheckOut = async (values: z.infer<typeof checkOutSchema>) => {
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
       const response = await fetch(`/api/reservations/${reservation.id}/check-out`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify(values),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to check out")
+        throw new Error(data.error || data.message || "Failed to check out");
       }
 
-      toast({ title: "Success", description: "Guest checked out successfully" })
-      setShowCheckOutDialog(false)
-      checkOutForm.reset()
-      queryClient.invalidateQueries(["reservations"])
+      toast({
+        title: "Success",
+        description: data.message || `Guest checked out successfully with a settlement of ${formatCurrency(values.settleAmount)}`
+      });
+      
+      // Close dialog and refresh data
+      setShowCheckOutDialog(false);
+      checkOutForm.reset();
+      queryClient.invalidateQueries(["reservations"]);
+      
+      // Force a page refresh to update all states
+      window.location.reload();
     } catch (error) {
+      console.error("Check-out error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to check out",
-        variant: "destructive",
-      })
+        variant: "destructive"
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleChangeRoom = async (values: z.infer<typeof changeRoomSchema>) => {
     try {
@@ -288,57 +301,81 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
 
   const handleCancel = async () => {
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
       const response = await fetch(`/api/reservations/${reservation.id}/cancel`, {
         method: "POST",
-      })
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to cancel reservation")
+        throw new Error(data.error || data.message || "Failed to cancel reservation");
       }
 
-      toast({ title: "Success", description: "Reservation cancelled successfully" })
-      setShowCancelDialog(false)
-      queryClient.invalidateQueries(["reservations"])
+      toast({
+        title: "Success",
+        description: data.message || "Reservation cancelled successfully"
+      });
+      
+      // Close dialog and refresh data
+      setShowCancelDialog(false);
+      queryClient.invalidateQueries(["reservations"]);
+      
+      // Force a page refresh to update all states
+      window.location.reload();
     } catch (error) {
+      console.error("Cancel error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to cancel reservation",
-        variant: "destructive",
-      })
+        variant: "destructive"
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleRefund = async () => {
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
       const response = await fetch(`/api/reservations/${reservation.id}/refund`, {
         method: "POST",
-      })
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to process refund")
+        throw new Error(data.message || data.error || "Failed to process refund");
       }
 
-      toast({ title: "Success", description: "Refund processed successfully" })
-      setShowRefundDialog(false)
-      queryClient.invalidateQueries(["reservations"])
+      toast({
+        title: "Success",
+        description: data.message || `Refund processed successfully`
+      });
+      
+      // Close dialog and refresh data
+      setShowRefundDialog(false);
+      queryClient.invalidateQueries(["reservations"]);
+      
+      // Force a page refresh to update all states
+      window.location.reload();
     } catch (error) {
+      console.error("[REFUND_ERROR]", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to process refund",
-        variant: "destructive",
-      })
+        variant: "destructive"
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const getAvailableActions = () => {
     switch (reservation.status) {
@@ -521,7 +558,7 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
                           <SelectItem value="error" disabled>
                             Error loading rooms
                           </SelectItem>
-                        ) : !availableRooms || availableRooms.length === 0 ? (
+                        ) : availableRooms.length === 0 ? (
                           <SelectItem value="none" disabled>
                             No rooms available
                           </SelectItem>
@@ -654,7 +691,7 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
                           <SelectItem value="error" disabled>
                             Error loading rooms
                           </SelectItem>
-                        ) : !availableRooms || availableRooms.length === 0 ? (
+                        ) : availableRooms.length === 0 ? (
                           <SelectItem value="none" disabled>
                             No rooms available
                           </SelectItem>

@@ -18,18 +18,21 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        description: true,
+        adultCapacity: true,
+        childCapacity: true,
         basePrice: true,
+        extraBedCharge: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
-    // Ensure all room types have valid IDs
-    const validRoomTypes = roomTypes.map(type => ({
-      id: type.id || `type-${Date.now()}`, // Fallback ID if none exists
-      name: type.name,
-      basePrice: type.basePrice,
-    }))
-
-    return NextResponse.json(validRoomTypes)
+    return NextResponse.json({ roomTypes })
   } catch (error) {
     console.error("Error fetching room types:", error)
     return NextResponse.json(
@@ -89,7 +92,7 @@ export async function POST(request: Request) {
         childCapacity,
         basePrice,
         extraBedCharge,
-        isActive: true
+        isActive: true // Set to true by default
       },
     })
 

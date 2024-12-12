@@ -94,13 +94,7 @@ export default function ServicesPage() {
           <ServiceCard
             key={service.id}
             service={service}
-            onDelete={() => {
-              toast({
-                title: "Success",
-                description: "Service deleted successfully",
-              })
-              fetchServices()
-            }}
+            onUpdate={fetchServices}
           />
         ))}
       </div>

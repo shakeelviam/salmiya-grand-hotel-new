@@ -79,6 +79,10 @@ export async function POST(req: Request) {
     const extraBedCharges = (extraBeds || 0) * roomType.extraBedCharge * days
     const totalAmount = roomCharges + extraBedCharges
 
+    // Determine reservation status based on advance payment
+    // Using correct enum values from ReservationStatus
+    const reservationStatus = advanceAmount > 0 ? "PENDING" : "RESERVED_UNPAID"
+
     // Create reservation
     const reservation = await prisma.reservation.create({
       data: {
@@ -95,7 +99,7 @@ export async function POST(req: Request) {
         totalAmount,
         advanceAmount: advanceAmount || 0,
         pendingAmount: totalAmount - (advanceAmount || 0),
-        status: advanceAmount > 0 ? "CONFIRMED" : "RESERVED_UNPAID",
+        status: reservationStatus,
         specialRequests,
         userId: session.user.id,
         roomId: null, // roomId is now optional

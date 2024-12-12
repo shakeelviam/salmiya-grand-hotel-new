@@ -1,114 +1,171 @@
-import { NextResponse } from "next/server"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { checkPermission } from "@/lib/permissions";
+import { type Params } from "next/dist/shared/lib/router/utils/route-matcher";
 
 export async function POST(
-  req: Request,
-  { params }: { params: { reservationId: string } }
+  req: NextRequest,
+  context: { params: Promise<Params> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse("Unauthorized", { status: 401 })
+    const params = await context.params;
+    console.log("Received params:", params);
+    const reservationId = params?.reservationId;
+    console.log("Extracted reservationId:", reservationId);
+    
+    if (!reservationId || typeof reservationId !== "string") {
+      return NextResponse.json(
+        { error: "Invalid reservation ID" },
+        { status: 400 }
+      );
     }
 
-    const body = await req.json()
-    const { roomId } = body
-    const { reservationId } = params
+    const session = await getServerSession(authOptions);
+    console.log("Session user:", session?.user);
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    // Get the reservation with its current room type
+    const hasPermission = await checkPermission(session.user.id, "manage_reservations");
+    console.log("Has permission:", hasPermission);
+    if (!hasPermission) {
+      return NextResponse.json(
+        { error: "You don't have permission to perform this action" },
+        { status: 403 }
+      );
+    }
+
+    const rawBody = await req.text();
+    console.log("Raw request body:", rawBody);
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+    console.log("Parsed body:", body);
+    const { roomId } = body;
+
+    if (!roomId) {
+      return NextResponse.json(
+        { error: "Room ID is required" },
+        { status: 400 }
+      );
+    }
+
     const reservation = await prisma.reservation.findUnique({
       where: { id: reservationId },
       include: {
-        roomType: true
-      }
-    })
+        roomType: true,
+      },
+    });
 
+    console.log("Found reservation:", reservation);
     if (!reservation) {
-      return new NextResponse("Reservation not found", { status: 404 })
+      return NextResponse.json(
+        { error: "Reservation not found" },
+        { status: 404 }
+      );
     }
 
     if (reservation.status !== "CONFIRMED") {
-      return new NextResponse("Reservation must be confirmed before check-in", {
-        status: 400,
-      })
+      return NextResponse.json(
+        { error: "Only confirmed reservations can be checked in" },
+        { status: 400 }
+      );
     }
 
-    // Check if room exists and matches the reservation's room type
+    // Use advanceAmount instead of payments for validation
+    const minimumRequired = reservation.totalAmount * 0.5;
+    if (reservation.advanceAmount < minimumRequired) {
+      return NextResponse.json(
+        {
+          error: "Insufficient payment for check-in",
+          details: {
+            totalAmount: reservation.totalAmount,
+            minimumRequired,
+            paid: reservation.advanceAmount,
+            remaining: minimumRequired - reservation.advanceAmount,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const room = await prisma.room.findUnique({
       where: { id: roomId },
       include: {
-        roomType: true
-      }
-    })
+        reservations: {
+          where: {
+            status: { in: ["CHECKED_IN", "CONFIRMED"] },
+            NOT: { id: reservationId },
+          },
+        },
+      },
+    });
 
     if (!room) {
-      return new NextResponse("Room not found", { status: 404 })
+      return NextResponse.json(
+        { error: "Selected room does not exist" },
+        { status: 404 }
+      );
+    }
+
+    if (room.status !== "AVAILABLE" || room.reservations.length > 0) {
+      return NextResponse.json(
+        { error: "The selected room is not available" },
+        { status: 400 }
+      );
     }
 
     if (room.roomTypeId !== reservation.roomTypeId) {
-      return new NextResponse("Room type does not match reservation", { status: 400 })
+      return NextResponse.json(
+        { error: "Selected room type does not match the reservation" },
+        { status: 400 }
+      );
     }
 
-    if (!room.isAvailable) {
-      return new NextResponse("Room is not available", { status: 400 })
-    }
-
-    // Check if room is already assigned to another active reservation
-    const existingReservation = await prisma.reservation.findFirst({
-      where: {
-        roomId: roomId,
-        status: {
-          in: ["CHECKED_IN", "CONFIRMED"]
-        }
-      }
-    })
-
-    if (existingReservation) {
-      return new NextResponse("Room is already assigned to another reservation", { status: 400 })
-    }
-
-    // Use a transaction to ensure atomicity
     const updatedReservation = await prisma.$transaction(async (tx) => {
-      // Update room availability
       await tx.room.update({
         where: { id: roomId },
-        data: { isAvailable: false },
-      })
+        data: { status: "OCCUPIED" },
+      });
 
-      // Update reservation
       return tx.reservation.update({
         where: { id: reservationId },
         data: {
           status: "CHECKED_IN",
           room: {
-            connect: { id: roomId }
-          },
-          checkInTime: new Date(),
-        },
-        include: {
-          room: {
-            include: {
-              roomType: true
-            }
-          },
-          roomType: true,
-          payments: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+            connect: {
+              id: roomId
             }
           }
+        },
+        include: {
+          room: true
         }
-      })
-    })
+      });
+    });
 
-    return NextResponse.json(updatedReservation)
+    return NextResponse.json({
+      success: true,
+      data: updatedReservation,
+      message: `Guest successfully checked into Room ${updatedReservation.room.number}`,
+    });
   } catch (error) {
-    console.error("[RESERVATION_CHECK_IN]", error)
-    return new NextResponse("Internal Server Error", { status: 500 })
+    console.error("Error during check-in:", error);
+    return NextResponse.json(
+      { error: "An error occurred while processing check-in" },
+      { status: 500 }
+    );
   }
 }

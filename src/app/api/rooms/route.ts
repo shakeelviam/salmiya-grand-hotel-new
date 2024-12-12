@@ -26,18 +26,15 @@ export async function GET(req: Request) {
         ...(isAvailable && { isAvailable: isAvailable === "true" }),
       },
       include: {
-        roomType: true,
-        reservations: {
-          where: {
-            status: {
-              in: ["CONFIRMED", "CHECKED_IN"],
-            },
-          },
-          orderBy: {
-            checkIn: "asc",
-          },
-          take: 1,
-        },
+        roomType: {
+          select: {
+            id: true,
+            name: true,
+            basePrice: true,
+            adultCapacity: true,
+            childCapacity: true
+          }
+        }
       },
       orderBy: {
         number: "asc",
@@ -46,30 +43,20 @@ export async function GET(req: Request) {
 
     console.log("[ROOMS_GET] Retrieved rooms:", rooms)
 
-    // Transform the data to include current guest info and room type details
-    const transformedRooms = rooms.map((room) => {
-      const currentReservation = room.reservations[0]
-      return {
-        id: room.id || "",
-        number: room.number || "",
-        floor: room.floor || "",
-        roomType: {
-          id: room.roomType.id || "",
-          name: room.roomType.name || "",
-          basePrice: room.roomType.basePrice || 0,
-          extraBedCharge: room.roomType.extraBedCharge || 0,
-        },
-        isAvailable: room.isAvailable,
-        status: currentReservation
-          ? currentReservation.status
-          : room.isAvailable
-          ? "Available"
-          : "Maintenance",
-        guest: currentReservation?.userId || "-",
-        checkIn: currentReservation?.checkIn.toISOString().split("T")[0] || "-",
-        checkOut: currentReservation?.checkOut.toISOString().split("T")[0] || "-",
-      }
-    })
+    // Transform the data to include room type details
+    const transformedRooms = rooms.map((room) => ({
+      id: room.id,
+      number: room.number,
+      roomType: {
+        id: room.roomType.id,
+        name: room.roomType.name,
+        basePrice: room.roomType.basePrice,
+        adultCapacity: room.roomType.adultCapacity,
+        childCapacity: room.roomType.childCapacity
+      },
+      status: room.status || "AVAILABLE",
+      isActive: room.isActive
+    }))
 
     console.log("[ROOMS_GET] Transformed rooms:", transformedRooms)
     return NextResponse.json(transformedRooms)
@@ -90,62 +77,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const formData = await req.formData()
-    const number = formData.get("number") as string
-    const floor = formData.get("floor") as string
-    const roomTypeId = formData.get("roomTypeId") as string
-    const isAvailable = formData.get("isAvailable") === "true"
-
-    console.log("[ROOMS_POST] Received data:", {
-      number,
-      floor,
-      roomTypeId,
-      isAvailable,
-    })
-
+    const json = await req.json()
+    console.log("[ROOMS_POST] Received data:", json)
+    
     // Validate required fields
-    if (!number || !floor || !roomTypeId) {
-      console.log("[ROOMS_POST] Missing fields:", { number, floor, roomTypeId })
+    if (!json.number || !json.roomTypeId || !json.floor) {
       return NextResponse.json(
-        { error: "Missing required fields" }, 
+        { error: "Room number, room type, and floor are required" },
         { status: 400 }
       )
     }
 
     // Check if room number already exists
     const existingRoom = await prisma.room.findFirst({
-      where: { number },
+      where: { number: json.number }
     })
 
     if (existingRoom) {
-      console.log("[ROOMS_POST] Room number already exists:", number)
       return NextResponse.json(
         { error: "Room number already exists" },
         { status: 400 }
       )
     }
 
-    // Create room
-    console.log("[ROOMS_POST] Creating room with data:", {
-      number,
-      floor,
-      roomTypeId,
-      isAvailable,
+    // Verify room type exists
+    const roomType = await prisma.roomType.findUnique({
+      where: { id: json.roomTypeId }
     })
 
+    if (!roomType) {
+      return NextResponse.json(
+        { error: "Invalid room type selected" },
+        { status: 400 }
+      )
+    }
+
+    // Create the room with proper data structure
     const room = await prisma.room.create({
       data: {
-        number,
-        floor,
-        roomTypeId,
-        isAvailable,
+        number: json.number,
+        floor: json.floor,
+        roomTypeId: json.roomTypeId,
+        description: json.description || '',
+        status: 'AVAILABLE',
+        isActive: true,
+        isAvailable: true,
       },
       include: {
-        roomType: true,
-      },
+        roomType: true
+      }
     })
 
-    console.log("[ROOMS_POST] Room created successfully:", room)
+    console.log("[ROOMS_POST] Created room:", room)
     return NextResponse.json(room)
   } catch (error) {
     console.error("[ROOMS_POST] Error:", error)

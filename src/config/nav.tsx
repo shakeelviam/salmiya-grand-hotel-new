@@ -28,16 +28,11 @@ export const navItems = [
     items: [
       {
         title: "Dashboard",
-        href: "/dashboard",
+        href: "/dashboard/analytics",
         icon: LayoutDashboard,
         description: "Overview of hotel operations",
       },
-      {
-        title: "Analytics",
-        href: "/dashboard/analytics",
-        icon: BarChart3,
-        description: "Detailed performance metrics",
-      },
+      
     ],
   },
   {
@@ -117,19 +112,25 @@ export const navItems = [
     ],
   },
   {
-    title: "Administration",
+    title: "System",
     items: [
+      {
+        title: "Settings",
+        href: "/dashboard/settings",
+        icon: Settings,
+        description: "Hotel policies and system settings",
+      },
+      {
+        title: "Users",
+        href: "/dashboard/users",
+        icon: Users,
+        description: "User management",
+      },
       {
         title: "Roles",
         href: "/dashboard/roles",
         icon: Shield,
-        description: "Role management",
-      },
-      {
-        title: "Role Permissions",
-        href: "/dashboard/role-permissions",
-        icon: Key,
-        description: "Role-based permission management",
+        description: "Role and permission management",
       },
     ],
   },
@@ -176,29 +177,6 @@ export const navItems = [
         href: "/dashboard/expenses",
         icon: Wallet,
         description: "Track and manage expenses",
-      },
-    ],
-  },
-  {
-    title: "Settings & Administration",
-    items: [
-      {
-        title: "Users",
-        href: "/dashboard/users",
-        icon: Users,
-        description: "Manage staff and user accounts",
-      },
-      {
-        title: "Profile",
-        href: "/dashboard/profile",
-        icon: UserCircle,
-        description: "Your account settings",
-      },
-      {
-        title: "Settings",
-        href: "/dashboard/settings",
-        icon: Settings,
-        description: "System configuration",
       },
     ],
   },

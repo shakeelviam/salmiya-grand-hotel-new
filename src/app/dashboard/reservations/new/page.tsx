@@ -109,16 +109,34 @@ export default function NewReservationPage() {
         const guestsData = await guestsResponse.json()
         const paymentModesData = await paymentModesResponse.json()
 
-        setRoomTypes(roomTypesData)
+        // Validate and set room types
+        if (!roomTypesData.roomTypes || !Array.isArray(roomTypesData.roomTypes)) {
+          throw new Error('Invalid room types data structure')
+        }
+        setRoomTypes(roomTypesData.roomTypes)
+
+        // Validate and set guests - guests API returns array directly
+        if (!Array.isArray(guestsData)) {
+          throw new Error('Invalid guests data structure')
+        }
         setGuests(guestsData)
+
+        // Validate and set payment modes
+        if (!paymentModesData.data || !Array.isArray(paymentModesData.data)) {
+          throw new Error('Invalid payment modes data structure')
+        }
         setPaymentModes(paymentModesData.data)
       } catch (error) {
         console.error('Error loading data:', error)
         toast({
           title: "Error",
-          description: "Failed to load data",
+          description: error instanceof Error ? error.message : "Failed to load data",
           variant: "destructive",
         })
+        // Initialize with empty arrays on error
+        setRoomTypes([])
+        setGuests([])
+        setPaymentModes([])
       } finally {
         setLoading(false)
       }
@@ -375,21 +393,28 @@ export default function NewReservationPage() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        disabled={loading || roomTypes.length === 0}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a room type" />
+                            <SelectValue placeholder={loading ? "Loading..." : roomTypes.length === 0 ? "No room types available" : "Select a room type"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {roomTypes.map((type) => (
-                            <SelectItem
-                              key={type.id}
-                              value={type.id}
-                            >
-                              {type.name} (KWD {type.basePrice.toFixed(3)}/night)
-                            </SelectItem>
-                          ))}
+                          {loading ? (
+                            <SelectItem value="" disabled>Loading...</SelectItem>
+                          ) : roomTypes.length === 0 ? (
+                            <SelectItem value="" disabled>No room types available</SelectItem>
+                          ) : (
+                            roomTypes.map((type) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.id}
+                              >
+                                {type.name} (KWD {type.basePrice.toFixed(3)}/night)
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

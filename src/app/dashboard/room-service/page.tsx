@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useToast } from "@/components/ui/use-toast"
+import { OrderList } from "@/components/room-service/order-list"
+import { Skeleton } from "@/components/ui/skeleton"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -23,7 +26,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
 import { getActiveReservations, getRoomServiceItems, getRoomServiceOrders } from "@/lib/api"
 import { RoomServiceOrdersTable } from "@/components/tables/room-service-orders-table"
 
@@ -39,6 +41,7 @@ const roomServiceSchema = z.object({
 })
 
 export default function RoomServicePage() {
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([])
   const [reservations, setReservations] = useState([])
@@ -110,6 +113,19 @@ export default function RoomServicePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-[150px]" />
+        </div>
+        <div className="rounded-md border">
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </div>
+    )
   }
 
   return (

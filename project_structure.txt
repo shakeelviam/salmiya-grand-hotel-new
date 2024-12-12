@@ -1,0 +1,429 @@
+.
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── prisma
+│   ├── create-admin.ts
+│   ├── migrations
+│   │   ├── 20241206220707_init
+│   │   │   └── migration.sql
+│   │   ├── 20241206234847_add_floor_and_isavailable_to_room
+│   │   │   └── migration.sql
+│   │   ├── 20241207095238_add_guest_model
+│   │   │   └── migration.sql
+│   │   ├── 20241208000224_make_roomid_optional
+│   │   │   └── migration.sql
+│   │   ├── 20241208123515_add_maintenance_tasks
+│   │   │   └── migration.sql
+│   │   ├── 20241208124505_add_housekeeping_tasks
+│   │   │   └── migration.sql
+│   │   └── migration_lock.toml
+│   ├── schema.prisma
+│   └── seed.ts
+├── project_structure.txt
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── uploads
+│   │   ├── 016ae38f-f995-4b29-b236-b6720b64b12c.pdf
+│   │   ├── 02c75d0e-2b35-4bb6-8282-836b7135cb2e.jpeg
+│   │   ├── 1aa770c5-0cdd-41bb-a183-5c8451f05615.pdf
+│   │   ├── 2eff5421-3366-46f7-bdfb-a3d1280ca332.pdf
+│   │   ├── 36b81d67-01a5-4701-8230-ca44b407c493.pdf
+│   │   ├── 36efc1ce-d9f1-436d-b0a9-c82424b52fb2.pdf
+│   │   ├── 40310a6d-3578-4c05-8d90-e51853033e19.pdf
+│   │   ├── 4144ca2e-b04f-452c-b33f-ac71008436da.pdf
+│   │   ├── 48785850-5d66-486e-8b84-5c32c0cce762.pdf
+│   │   ├── 495f5408-d16c-44a2-ba13-41991460cecb.jpeg
+│   │   ├── 5e9ea9cb-5bfa-4104-9fcd-6a1c3ab5e2f4.pdf
+│   │   ├── 66de1e11-beb1-41d9-bdbd-5e61a2e0b32e.jpeg
+│   │   ├── 6af3df71-34c9-4658-a8ef-6cba7950f19c.png
+│   │   ├── 7fda736f-0735-4345-be50-6ad9ceece64d.jpeg
+│   │   ├── 81559ffc-b4c4-4240-a91a-7ef8b2818a00.pdf
+│   │   ├── 82bfbb0b-4acd-419a-bf1a-8397cdc73fe7.jpeg
+│   │   ├── 9b47669e-c3fe-42b1-97b2-389f59c08eca.jpeg
+│   │   ├── 9bb8eb7b-62a6-421b-bc0f-876da27fb6e8.pdf
+│   │   ├── a8feabde-0339-4d83-b356-5512dedf8ab0.pdf
+│   │   ├── a9000a97-5977-448b-8ab5-aeec5b070926.pdf
+│   │   ├── c1e83bb6-c2fc-47db-b8e9-8bcbd9c2822b.jpeg
+│   │   ├── c504aa8f-c500-4242-be3a-aaad1a0fa93a.pdf
+│   │   ├── cbbd492d-e15d-4e06-9ac9-aaa1a440cee9.jpeg
+│   │   ├── d48d8a16-fad2-470d-8bde-787341da0f57.pdf
+│   │   ├── d6c2148b-9738-4ad6-9c38-64a6f66de7a7.jpeg
+│   │   ├── e4c5228d-4be6-48d6-aeee-b0cf19a2d36d.png
+│   │   ├── e86b510c-b476-4d52-b265-d937abd195b0.jpeg
+│   │   └── eae74080-44a6-446b-b407-56a4b52f9cc9.pdf
+│   ├── vercel.svg
+│   └── window.svg
+├── README.md
+├── scripts
+│   ├── check-users.ts
+│   ├── cleanup-users.ts
+│   ├── create-admin.ts
+│   ├── create-test-user.ts
+│   ├── reset-db.ts
+│   ├── seed-rooms.ts
+│   └── tsconfig.json
+├── src
+│   ├── app
+│   │   ├── api
+│   │   │   ├── auth
+│   │   │   │   ├── forgot-password
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── [...nextauth]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── reset-password
+│   │   │   │       └── route.ts
+│   │   │   ├── expenses
+│   │   │   │   ├── [expenseId]
+│   │   │   │   │   └── toggle
+│   │   │   │   │       └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── guests
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── toggle-status
+│   │   │   │   │       └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── housekeeping
+│   │   │   │   ├── route.ts
+│   │   │   │   └── [taskId]
+│   │   │   │       └── toggle
+│   │   │   │           └── route.ts
+│   │   │   ├── maintenance
+│   │   │   │   ├── route.ts
+│   │   │   │   └── [taskId]
+│   │   │   │       └── toggle
+│   │   │   │           └── route.ts
+│   │   │   ├── menu-categories
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── menu-items
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── payment-modes
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── payments
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── permissions
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── [permissionId]
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── reservations
+│   │   │   │   ├── available-rooms
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── [reservationId]
+│   │   │   │   │   ├── cancel
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── change-room
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── check-in
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── check-out
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── checkout
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── extend-stay
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── payment
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── refund
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── roles
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── permissions
+│   │   │   │   │   │   ├── history
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── rooms
+│   │   │   │   ├── available
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── [roomId]
+│   │   │   │   │   ├── route.ts
+│   │   │   │   │   └── status
+│   │   │   │   │       └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── room-service
+│   │   │   │   ├── [roomServiceId]
+│   │   │   │   │   ├── route.ts
+│   │   │   │   │   └── status
+│   │   │   │   │       └── route.ts
+│   │   │   │   │           └── status
+│   │   │   │   │               └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── room-service-items
+│   │   │   │   └── route.ts
+│   │   │   ├── room-types
+│   │   │   │   ├── route.ts
+│   │   │   │   └── [typeId]
+│   │   │   │       ├── [id]
+│   │   │   │       │   └── route.ts
+│   │   │   │       └── status
+│   │   │   │           └── route.ts
+│   │   │   ├── service-categories
+│   │   │   │   ├── [categoryId]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── services
+│   │   │   │   ├── route.ts
+│   │   │   │   └── [serviceId]
+│   │   │   │       └── status
+│   │   │   │           └── route.ts
+│   │   │   ├── test-email
+│   │   │   │   └── route.ts
+│   │   │   ├── test-env
+│   │   │   │   └── route.ts
+│   │   │   ├── upload
+│   │   │   │   └── route.ts
+│   │   │   ├── user
+│   │   │   │   ├── change-password
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── profile
+│   │   │   │       └── route.ts
+│   │   │   └── users
+│   │   │       ├── [id]
+│   │   │       │   └── route.ts
+│   │   │       └── route.ts
+│   │   ├── auth
+│   │   │   ├── error
+│   │   │   │   └── page.tsx
+│   │   │   ├── forgot-password
+│   │   │   │   └── page.tsx
+│   │   │   ├── login
+│   │   │   │   └── page.tsx
+│   │   │   └── reset-password
+│   │   │       └── page.tsx
+│   │   ├── dashboard
+│   │   │   ├── analytics
+│   │   │   │   └── page.tsx
+│   │   │   ├── expenses
+│   │   │   │   └── page.tsx
+│   │   │   ├── guests
+│   │   │   │   └── page.tsx
+│   │   │   ├── housekeeping
+│   │   │   │   └── page.tsx
+│   │   │   ├── kitchen
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── maintenance
+│   │   │   │   └── page.tsx
+│   │   │   ├── menu-categories
+│   │   │   │   ├── columns.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── menu-items
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── payment-modes
+│   │   │   │   ├── actions.tsx
+│   │   │   │   ├── columns.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── payments
+│   │   │   │   └── page.tsx
+│   │   │   ├── permissions
+│   │   │   │   └── page.tsx
+│   │   │   ├── profile
+│   │   │   │   └── page.tsx
+│   │   │   ├── reservations
+│   │   │   │   ├── new
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── restaurant
+│   │   │   │   └── page.tsx
+│   │   │   ├── role-permissions
+│   │   │   │   └── page.tsx
+│   │   │   ├── roles
+│   │   │   │   └── page.tsx
+│   │   │   ├── rooms
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── [roomId]
+│   │   │   │       ├── edit
+│   │   │   │       │   └── page.tsx
+│   │   │   │       ├── page.tsx
+│   │   │   │       └── qr
+│   │   │   │           └── page.tsx
+│   │   │   ├── room-service
+│   │   │   │   └── page.tsx
+│   │   │   ├── room-types
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── room-type-form.tsx
+│   │   │   ├── service-categories
+│   │   │   │   └── page.tsx
+│   │   │   ├── services
+│   │   │   │   └── page.tsx
+│   │   │   ├── staff
+│   │   │   │   └── page.tsx
+│   │   │   └── users
+│   │   │       ├── create
+│   │   │       │   └── page.tsx
+│   │   │       ├── [id]
+│   │   │       │   ├── edit
+│   │   │       │   │   └── page.tsx
+│   │   │       │   └── page.tsx
+│   │   │       └── page.tsx
+│   │   ├── favicon.ico
+│   │   ├── fonts
+│   │   │   ├── GeistMonoVF.woff
+│   │   │   └── GeistVF.woff
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── room-service
+│   │   │   └── [roomId]
+│   │   │       └── page.tsx
+│   │   └── test-payments
+│   │       └── page.tsx
+│   ├── components
+│   │   ├── auth
+│   │   │   ├── login-form.tsx
+│   │   │   └── user-menu.tsx
+│   │   ├── cards
+│   │   │   ├── menu-item-card.tsx
+│   │   │   ├── service-card.tsx
+│   │   │   └── service-category-card.tsx
+│   │   ├── dialogs
+│   │   │   ├── check-in-dialog.tsx
+│   │   │   ├── create-expense-dialog.tsx
+│   │   │   ├── create-housekeeping-dialog.tsx
+│   │   │   └── create-maintenance-dialog.tsx
+│   │   ├── forms
+│   │   │   ├── booking-form.tsx
+│   │   │   ├── login-form.tsx
+│   │   │   ├── menu-category-form.tsx
+│   │   │   ├── menu-item-form.tsx
+│   │   │   ├── payment-form.tsx
+│   │   │   ├── payment-mode-form.tsx
+│   │   │   ├── permission-form.tsx
+│   │   │   ├── reservation-form.tsx
+│   │   │   ├── role-form.tsx
+│   │   │   ├── role-permission-form.tsx
+│   │   │   ├── room-form.tsx
+│   │   │   ├── room-type-form.tsx
+│   │   │   ├── service-category-form.tsx
+│   │   │   ├── service-form.tsx
+│   │   │   └── user-form.tsx
+│   │   ├── layout
+│   │   │   ├── dashboard-layout.tsx
+│   │   │   └── header.tsx
+│   │   ├── order-dialog.tsx
+│   │   ├── providers
+│   │   │   ├── index.tsx
+│   │   │   └── sidebar-provider.tsx
+│   │   ├── providers.tsx
+│   │   ├── reservations
+│   │   │   ├── payment-status-badge.tsx
+│   │   │   ├── reservation-actions.tsx
+│   │   │   ├── reservation-form.tsx
+│   │   │   └── reservation-status-badge.tsx
+│   │   ├── rooms
+│   │   │   ├── create-room-dialog.tsx
+│   │   │   ├── qr-code.tsx
+│   │   │   └── room-list.tsx
+│   │   ├── room-service
+│   │   │   ├── food-menu.tsx
+│   │   │   ├── guest-dashboard.tsx
+│   │   │   ├── order-tracker.tsx
+│   │   │   ├── qr-code-scanner.tsx
+│   │   │   └── room-service-menu.tsx
+│   │   ├── tables
+│   │   │   ├── expenses-table.tsx
+│   │   │   ├── guests-table.tsx
+│   │   │   ├── housekeeping-table.tsx
+│   │   │   ├── maintenance-table.tsx
+│   │   │   ├── menu-categories-table.tsx
+│   │   │   ├── menu-items-table.tsx
+│   │   │   ├── payment-modes-table.tsx
+│   │   │   ├── payments-table.tsx
+│   │   │   ├── reservations-table.tsx
+│   │   │   ├── roles-table.tsx
+│   │   │   ├── room-service-orders-table.tsx
+│   │   │   └── room-types-table.tsx
+│   │   ├── theme
+│   │   │   └── theme-toggle.tsx
+│   │   └── ui
+│   │       ├── accordion.tsx
+│   │       ├── action-buttons.tsx
+│   │       ├── alert-dialog.tsx
+│   │       ├── alert.tsx
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── button.tsx
+│   │       ├── calendar.tsx
+│   │       ├── card.tsx
+│   │       ├── checkbox.tsx
+│   │       ├── collapsible.tsx
+│   │       ├── command.tsx
+│   │       ├── data-table-column-header.tsx
+│   │       ├── data-table-row-actions.tsx
+│   │       ├── data-table.tsx
+│   │       ├── dialog.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── form.tsx
+│   │       ├── hover-card.tsx
+│   │       ├── icons.tsx
+│   │       ├── image-upload.tsx
+│   │       ├── input.tsx
+│   │       ├── label.tsx
+│   │       ├── pagination.tsx
+│   │       ├── popover.tsx
+│   │       ├── progress.tsx
+│   │       ├── radio-group.tsx
+│   │       ├── scroll-area.tsx
+│   │       ├── select.tsx
+│   │       ├── separator.tsx
+│   │       ├── sheet.tsx
+│   │       ├── sidebar.tsx
+│   │       ├── sidebar.tsx.bak
+│   │       ├── skeleton.tsx
+│   │       ├── switch.tsx
+│   │       ├── table.tsx
+│   │       ├── tabs.tsx
+│   │       ├── textarea.tsx
+│   │       ├── toaster.tsx
+│   │       ├── toast.tsx
+│   │       ├── tooltip.tsx
+│   │       ├── user-menu.tsx
+│   │       └── use-toast.ts
+│   ├── config
+│   │   └── nav.tsx
+│   ├── hooks
+│   │   ├── use-media-query.ts
+│   │   ├── use-mobile.tsx
+│   │   ├── use-rooms.ts
+│   │   └── use-toast.ts
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── auth.ts
+│   │   ├── email.ts
+│   │   ├── nationalities.ts
+│   │   ├── permissions.ts
+│   │   ├── prisma.ts
+│   │   ├── utils
+│   │   │   ├── currency.ts
+│   │   │   ├── date.ts
+│   │   │   └── styles.ts
+│   │   └── utils.ts
+│   ├── middleware.ts
+│   ├── providers
+│   │   ├── query-provider.tsx
+│   │   └── theme-provider.tsx
+│   └── styles
+│       └── globals.css
+├── tailwind.config.ts
+├── tsconfig.json
+└── yarn.lock
+
+143 directories, 284 files

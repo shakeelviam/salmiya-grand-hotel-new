@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -21,15 +21,16 @@ import { useToast } from '@/hooks/use-toast'
 
 // Form validation schema
 const formSchema = z.object({
-  number: z.string().min(1, 'Room number is required'),
-  roomTypeId: z.string().min(1, 'Room type is required'),
-  floor: z.string().min(1, 'Floor is required'),
-  adultCapacity: z.string().min(1, 'Adult capacity is required'),
-  childCapacity: z.string(),
-  amenities: z.string().optional(),
+  number: z.string().min(1, "Room number is required"),
+  roomTypeId: z.string().min(1, "Room type is required"),
+  floor: z.string().min(1, "Floor is required"),
   description: z.string().optional(),
-  descriptionAr: z.string().optional(),
 })
+
+interface RoomType {
+  id: string
+  name: string
+}
 
 interface CreateRoomDialogProps {
   open: boolean
@@ -39,45 +40,103 @@ interface CreateRoomDialogProps {
 
 export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
+  const [loadingRoomTypes, setLoadingRoomTypes] = useState(true)
   const { toast } = useToast()
+
+  // Fetch room types when dialog opens
+  useEffect(() => {
+    const fetchRoomTypes = async () => {
+      try {
+        setLoadingRoomTypes(true)
+        console.log('Fetching room types...')
+        const response = await fetch('/api/room-types')
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to fetch room types')
+        }
+
+        const data = await response.json()
+        console.log('Received room types data:', data)
+
+        if (!data.roomTypes) {
+          throw new Error('No room types data received')
+        }
+
+        const types = data.roomTypes
+        console.log('Room types:', types)
+
+        if (!Array.isArray(types)) {
+          throw new Error('Room types is not an array')
+        }
+
+        if (types.length === 0) {
+          console.log('Warning: No room types available')
+        }
+
+        setRoomTypes(types)
+      } catch (error) {
+        console.error('Error fetching room types:', error)
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to load room types',
+          variant: 'destructive'
+        })
+        // Initialize with empty array on error
+        setRoomTypes([])
+      } finally {
+        setLoadingRoomTypes(false)
+      }
+    }
+
+    // Only fetch if dialog is open
+    if (open) {
+      fetchRoomTypes()
+    }
+  }, [open, toast])
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       number: '',
+      roomTypeId: '',
       floor: '',
-      adultCapacity: '',
-      childCapacity: '0',
-      amenities: '',
       description: '',
-      descriptionAr: '',
     },
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true)
-      // Create room in database
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...values,
-          status: 'AVAILABLE'
+          status: 'AVAILABLE',
+          isActive: true,
+          isAvailable: true
         })
       })
 
-      if (!response.ok) throw new Error('Failed to create room')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create room')
+      }
 
       toast({
         title: 'Success',
         description: 'Room created successfully'
       })
-      
+      form.reset()
       onSuccess()
+      onOpenChange(false)
     } catch (error) {
+      console.error('Error creating room:', error)
       toast({
         title: 'Error',
-        description: 'Failed to create room',
+        description: error instanceof Error ? error.message : 'Failed to create room',
         variant: 'destructive'
       })
     } finally {
@@ -87,10 +146,14 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Create New Room</DialogTitle>
+          <DialogDescription>
+            Add a new room to the hotel inventory
+          </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -100,7 +163,7 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
                 <FormItem>
                   <FormLabel>Room Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="101" {...field} disabled={loading} />
+                    <Input {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -114,7 +177,7 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
                 <FormItem>
                   <FormLabel>Floor</FormLabel>
                   <FormControl>
-                    <Input placeholder="1" {...field} disabled={loading} />
+                    <Input {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,70 +190,30 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Room Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
+                  <Select 
+                    onValueChange={field.onChange} 
                     defaultValue={field.value}
-                    disabled={loading}
+                    disabled={loadingRoomTypes}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select room type" />
+                        <SelectValue placeholder={loadingRoomTypes ? "Loading..." : "Select room type"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="deluxe">Deluxe</SelectItem>
-                      <SelectItem value="suite">Suite</SelectItem>
+                      {roomTypes && roomTypes.length > 0 ? (
+                        roomTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          {loadingRoomTypes ? "Loading..." : "No room types available"}
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="adultCapacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Adult Capacity</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="1" {...field} disabled={loading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="childCapacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Child Capacity</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} disabled={loading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="amenities"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amenities</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="WiFi, TV, Mini Bar" 
-                      {...field} 
-                      disabled={loading} 
-                    />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -201,45 +224,27 @@ export function CreateRoomDialog({ open, onOpenChange, onSuccess }: CreateRoomDi
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (English)</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter room description" 
-                      {...field} 
-                      disabled={loading}
-                    />
+                    <Textarea {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="descriptionAr"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Arabic)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="أدخل وصف الغرفة" 
-                      {...field} 
-                      disabled={loading}
-                      dir="rtl"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button 
-              type="submit" 
-              disabled={loading} 
-              className="w-full bg-primary hover:bg-primary/90"
-            >
-              {loading ? 'Creating...' : 'Create Room'}
-            </Button>
+            <div className="flex justify-end space-x-4 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading || loadingRoomTypes}>
+                {loading ? "Creating..." : "Create Room"}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>

@@ -1,79 +1,80 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
-    const { searchParams } = new URL(request.url)
+    const searchParams = req.nextUrl.searchParams
     const roomTypeId = searchParams.get("roomTypeId")
+    const checkIn = searchParams.get("checkIn")
+    const checkOut = searchParams.get("checkOut")
 
-    if (!roomTypeId) {
-      return new NextResponse("Room type ID is required", { status: 400 })
-    }
-
-    console.log("[ROOMS_AVAILABLE] Searching for roomTypeId:", roomTypeId)
-
-    // First, check if the room type exists
-    const roomType = await prisma.roomType.findUnique({
-      where: { id: roomTypeId }
-    })
-
-    if (!roomType) {
-      console.log("[ROOMS_AVAILABLE] Room type not found")
-      return new NextResponse("Room type not found", { status: 404 })
-    }
-
-    console.log("[ROOMS_AVAILABLE] Found room type:", roomType)
-
-    // Get active reservations for this room type
-    const activeReservations = await prisma.reservation.findMany({
-      where: {
-        roomTypeId: roomTypeId,
-        status: {
-          in: ["CHECKED_IN", "CONFIRMED"]
-        }
-      },
-      select: {
-        roomId: true
-      }
-    })
-
-    console.log("[ROOMS_AVAILABLE] Active reservations:", activeReservations)
-
-    const occupiedRoomIds = activeReservations
-      .map(res => res.roomId)
-      .filter((id): id is string => id !== null)
-
-    console.log("[ROOMS_AVAILABLE] Occupied room IDs:", occupiedRoomIds)
-
-    // Get available rooms that are not occupied
+    // Get all rooms that are available (not assigned to any active reservation)
     const availableRooms = await prisma.room.findMany({
       where: {
-        roomTypeId: roomTypeId,
-        isAvailable: true,
-        id: {
-          notIn: occupiedRoomIds
+        ...(roomTypeId ? { roomTypeId } : {}),
+        status: 'AVAILABLE',
+        // Exclude rooms that have active reservations during the requested period
+        NOT: {
+          reservations: {
+            some: {
+              status: {
+                in: ['CONFIRMED', 'CHECKED_IN']
+              },
+              ...(checkIn && checkOut ? {
+                OR: [
+                  {
+                    AND: [
+                      { checkIn: { lte: new Date(checkIn) } },
+                      { checkOut: { gte: new Date(checkIn) } }
+                    ]
+                  },
+                  {
+                    AND: [
+                      { checkIn: { lte: new Date(checkOut) } },
+                      { checkOut: { gte: new Date(checkOut) } }
+                    ]
+                  }
+                ]
+              } : {})
+            }
+          }
         }
       },
       include: {
-        roomType: true
+        roomType: {
+          select: {
+            id: true,
+            name: true,
+            basePrice: true,
+            description: true
+          }
+        }
       },
       orderBy: {
         number: 'asc'
       }
     })
 
-    console.log("[ROOMS_AVAILABLE] Found available rooms:", availableRooms)
+    return NextResponse.json({
+      data: availableRooms,
+      message: "Available rooms fetched successfully"
+    })
 
-    return NextResponse.json(availableRooms)
   } catch (error) {
-    console.error("[ROOMS_AVAILABLE] Error:", error)
-    return new NextResponse("Internal error", { status: 500 })
+    console.error("Error fetching available rooms:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch available rooms" },
+      { status: 500 }
+    )
   }
 }

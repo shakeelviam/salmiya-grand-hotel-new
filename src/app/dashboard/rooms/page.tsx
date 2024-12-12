@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { RoomGrid } from "@/components/rooms/room-grid"
+import { RoomList } from "@/components/rooms/room-list"
 import { CreateRoomDialog } from "@/components/rooms/create-room-dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Room = {
   id: string
@@ -20,46 +21,64 @@ type Room = {
 
 export default function RoomsPage() {
   const router = useRouter()
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [open, setOpen] = useState(false)
   const { toast } = useToast()
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
 
-  useEffect(() => {
-    loadRooms()
-  }, [])
-
-  async function loadRooms() {
+  const fetchRooms = async () => {
     try {
-      const res = await fetch('/api/rooms')
-      if (!res.ok) throw new Error('Failed to load rooms')
-      const data = await res.json()
+      const response = await fetch('/api/rooms')
+      if (!response.ok) {
+        throw new Error('Failed to fetch rooms')
+      }
+      const data = await response.json()
       setRooms(data)
     } catch (error) {
+      console.error('Error fetching rooms:', error)
       toast({
-        title: 'Error',
-        description: 'Could not load rooms',
-        variant: 'destructive'
+        title: "Error",
+        description: "Failed to load rooms",
+        variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
 
+  useEffect(() => {
+    fetchRooms()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-[150px]" />
+          <Skeleton className="h-10 w-[100px]" />
+        </div>
+        <div className="rounded-md border">
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Rooms</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Rooms</h1>
         <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Room
         </Button>
       </div>
-
-      <RoomGrid rooms={rooms} onUpdate={loadRooms} />
-
+      <RoomList rooms={rooms} onUpdate={fetchRooms} />
       <CreateRoomDialog
         open={open}
         onOpenChange={setOpen}
         onSuccess={() => {
-          loadRooms()
+          fetchRooms()
           setOpen(false)
         }}
       />

@@ -26,9 +26,17 @@ export async function GET(req: NextRequest) {
       include: {
         reservation: {
           select: {
+            id: true,
             roomNumber: true,
             checkIn: true,
             checkOut: true,
+            totalAmount: true,
+            guest: {
+              select: {
+                name: true,
+                email: true,
+              }
+            }
           },
         },
         user: {
@@ -43,7 +51,32 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ data: payments })
+    // Transform the data to include reservation details
+    const transformedPayments = payments.map(payment => ({
+      id: payment.id,
+      receiptNumber: payment.receiptNumber,
+      amount: payment.amount,
+      paymentMode: payment.paymentMode,
+      status: payment.status,
+      transactionId: payment.transactionId,
+      notes: payment.notes,
+      createdAt: payment.createdAt,
+      reservation: {
+        id: payment.reservation.id,
+        roomNumber: payment.reservation.roomNumber,
+        checkIn: payment.reservation.checkIn,
+        checkOut: payment.reservation.checkOut,
+        totalAmount: payment.reservation.totalAmount,
+        guestName: payment.reservation.guest?.name || 'N/A',
+        guestEmail: payment.reservation.guest?.email || 'N/A',
+      },
+      recordedBy: {
+        name: payment.user.name || 'System',
+        email: payment.user.email || 'N/A',
+      }
+    }))
+
+    return NextResponse.json(transformedPayments)
   } catch (error) {
     console.error("Failed to fetch payments:", error)
     return NextResponse.json(
@@ -74,24 +107,114 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get the reservation
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        payments: true
+      }
+    })
+
+    if (!reservation) {
+      return NextResponse.json(
+        { error: "Reservation not found" },
+        { status: 404 }
+      )
+    }
+
+    // Validate payment amount
+    const totalPaid = reservation.payments.reduce((sum, p) => sum + p.amount, 0)
+    const remainingAmount = reservation.totalAmount - totalPaid
+
+    if (amount > remainingAmount) {
+      return NextResponse.json(
+        { error: `Payment amount exceeds remaining balance of ${remainingAmount}` },
+        { status: 400 }
+      )
+    }
+
     // Generate a unique receipt number
     const receiptNumber = `RCP-${nanoid(8).toUpperCase()}`
 
-    const payment = await prisma.payment.create({
-      data: {
-        reservationId,
-        amount,
-        paymentMode,
-        transactionId,
-        notes,
-        receiptNumber,
-        status: "COMPLETED",
-        userId: session.user.id,
-      },
+    const payment = await prisma.$transaction(async (tx) => {
+      // Create payment record
+      const newPayment = await tx.payment.create({
+        data: {
+          reservationId,
+          amount,
+          paymentMode,
+          transactionId,
+          notes,
+          receiptNumber,
+          status: "COMPLETED",
+          userId: session.user.id,
+        },
+        include: {
+          reservation: {
+            select: {
+              id: true,
+              roomNumber: true,
+              checkIn: true,
+              checkOut: true,
+              totalAmount: true,
+              guest: {
+                select: {
+                  name: true,
+                  email: true,
+                }
+              }
+            }
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            }
+          }
+        }
+      })
+
+      // Update reservation's pending amount
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: {
+          pendingAmount: {
+            decrement: amount
+          },
+          status: amount >= remainingAmount ? "CONFIRMED" : undefined
+        }
+      })
+
+      return newPayment
     })
 
+    // Transform the payment data
+    const transformedPayment = {
+      id: payment.id,
+      receiptNumber: payment.receiptNumber,
+      amount: payment.amount,
+      paymentMode: payment.paymentMode,
+      status: payment.status,
+      transactionId: payment.transactionId,
+      notes: payment.notes,
+      createdAt: payment.createdAt,
+      reservation: {
+        id: payment.reservation.id,
+        roomNumber: payment.reservation.roomNumber,
+        checkIn: payment.reservation.checkIn,
+        checkOut: payment.reservation.checkOut,
+        totalAmount: payment.reservation.totalAmount,
+        guestName: payment.reservation.guest?.name || 'N/A',
+        guestEmail: payment.reservation.guest?.email || 'N/A',
+      },
+      recordedBy: {
+        name: payment.user.name || 'System',
+        email: payment.user.email || 'N/A',
+      }
+    }
+
     return NextResponse.json({
-      data: payment,
+      data: transformedPayment,
       message: "Payment recorded successfully",
     })
   } catch (error) {
