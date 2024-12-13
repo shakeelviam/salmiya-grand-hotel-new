@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Eye, Pencil, Power } from "lucide-react"
-import { formatCurrency } from "@/lib/utils/currency"
+import { formatCurrency } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
@@ -75,6 +75,26 @@ export function ServiceCard({ service, onUpdate }: ServiceCardProps) {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      const response = await fetch(`/api/services/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete service")
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error deleting service:", error)
+      return false
     }
   }
 

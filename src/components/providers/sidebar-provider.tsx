@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import * as React from "react"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 type SidebarContext = {
   state: 'expanded' | 'collapsed'

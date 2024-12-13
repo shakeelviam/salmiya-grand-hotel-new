@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
-import { formatCurrency, parseCurrency } from "@/lib/utils/currency"
+import { formatCurrency, parseCurrency } from "@/lib/utils"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -25,6 +25,7 @@ const formSchema = z.object({
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
+  descriptionAr: z.string().default(""),
   adultCapacity: z.coerce.number().min(1, {
     message: "Adult capacity must be at least 1.",
   }),
@@ -37,6 +38,8 @@ const formSchema = z.object({
   extraBedCharge: z.coerce.number().min(0, {
     message: "Extra bed charge must be greater than or equal to 0.",
   }),
+  amenities: z.array(z.string()).default([]),
+  imageUrl: z.string().url().optional().or(z.literal('')).default(""),
 })
 
 type RoomTypeFormProps = {
@@ -45,10 +48,13 @@ type RoomTypeFormProps = {
     id: string
     name: string
     description: string
+    descriptionAr: string
     adultCapacity: number
     childCapacity: number
     basePrice: number
     extraBedCharge: number
+    amenities: string[]
+    imageUrl: string
   }
 }
 
@@ -59,18 +65,23 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: roomType?.name || "",
-      description: roomType?.description || "",
-      adultCapacity: roomType?.adultCapacity || 2,
-      childCapacity: roomType?.childCapacity || 1,
-      basePrice: roomType?.basePrice || 0,
-      extraBedCharge: roomType?.extraBedCharge || 0,
+      name: roomType?.name ?? "",
+      description: roomType?.description ?? "",
+      descriptionAr: roomType?.descriptionAr ?? "",
+      adultCapacity: roomType?.adultCapacity ?? 2,
+      childCapacity: roomType?.childCapacity ?? 1,
+      basePrice: roomType?.basePrice ?? 0,
+      extraBedCharge: roomType?.extraBedCharge ?? 0,
+      amenities: roomType?.amenities ?? [],
+      imageUrl: roomType?.imageUrl ?? "",
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true)
+      console.log("Submitting values:", values)
+
       const url = roomType ? `/api/room-types/${roomType.id}` : '/api/room-types'
       const method = roomType ? 'PUT' : 'POST'
 
@@ -82,24 +93,24 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
         body: JSON.stringify(values),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to save room type')
+        throw new Error(data.error || data.details || 'Failed to save room type')
       }
 
       toast({
         title: roomType ? "Room Type Updated" : "Room Type Created",
-        description: `${values.name} has been ${roomType ? 'updated' : 'created'} successfully.`
+        description: `${values.name} has been ${roomType ? 'updated' : 'created'} successfully.`,
       })
 
-      if (onSuccess) {
-        onSuccess()
-      }
-    } catch (error: any) {
+      onSuccess?.()
+    } catch (error) {
+      console.error('Error saving room type:', error)
       toast({
         title: "Error",
-        description: error.message || "Failed to save room type",
-        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to save room type",
+        variant: "destructive"
       })
     } finally {
       setLoading(false)
@@ -108,7 +119,7 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 h-[70vh] overflow-y-auto px-1">
         <FormField
           control={form.control}
           name="name"
@@ -128,6 +139,22 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="A luxurious room with modern amenities..."
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="descriptionAr"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Arabic)</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="A luxurious room with modern amenities..."
@@ -216,6 +243,45 @@ export function RoomTypeForm({ onSuccess, roomType }: RoomTypeFormProps) {
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="amenities"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amenities</FormLabel>
+              <FormControl>
+                <Input 
+                  type="text" 
+                  value={field.value.join(", ")}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    field.onChange(value ? value.split(",").map(item => item.trim()) : []);
+                  }}
+                  placeholder="WiFi, TV, Air Conditioning"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Image URL</FormLabel>
+              <FormControl>
+                <Input 
+                  type="url" 
+                  placeholder="https://example.com/image.jpg"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" disabled={loading}>
           {loading ? "Saving..." : (roomType ? "Update Room Type" : "Create Room Type")}
         </Button>

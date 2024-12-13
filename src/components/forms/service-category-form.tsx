@@ -53,8 +53,8 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
 
     try {
       setLoading(true)
-      const url = initialData ? `/api/service-categories/${initialData.id}` : '/api/service-categories'
-      const method = initialData ? 'PUT' : 'POST'
+      const url = initialData ? `/api/service-categories/${initialData.id}` : '/api/service-categories'"
+      const method = initialData ? 'PUT' : 'POST'"
 
       const response = await fetch(url, {
         method,

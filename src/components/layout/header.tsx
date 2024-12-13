@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { ThemeToggle } from '@/components/theme/theme-toggle'
-import { UserMenu } from '@/components/auth/user-menu'
+import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { UserMenu } from "@/components/auth/user-menu"
 
 export function Header() {
   return (

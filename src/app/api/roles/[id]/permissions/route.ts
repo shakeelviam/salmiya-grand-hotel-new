@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withPermission } from '@/lib/permissions'
+import { withPermission } from "@/lib/permissions"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 

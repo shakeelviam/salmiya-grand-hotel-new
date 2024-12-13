@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     // Update or create settings
     const settings = await prisma.hotelSettings.upsert({
       where: {
-        id: (await prisma.hotelSettings.findFirst())?.id || 'default'
+        id: (await prisma.hotelSettings.findFirst())?.id || 'default'"
       },
       update: {
         checkInTime: data.checkInTime,

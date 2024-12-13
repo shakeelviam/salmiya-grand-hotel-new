@@ -20,11 +20,14 @@ type RoomType = {
   id: string
   name: string
   description: string
+  descriptionAr: string
   adultCapacity: number
   childCapacity: number
   basePrice: number
   extraBedCharge: number
-  isActive: boolean
+  amenities: string[]
+  imageUrl: string | null
+  status: string
   createdAt: string
   updatedAt: string
 }
@@ -39,14 +42,24 @@ export default function RoomTypesPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/room-types')
-      if (!response.ok) throw new Error('Failed to fetch room types')
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || error.error || 'Failed to fetch room types')
+      }
+      
       const data = await response.json()
-      setRoomTypes(data)
+      
+      if (!data || !data.roomTypes) {
+        throw new Error('Invalid response format')
+      }
+
+      setRoomTypes(data.roomTypes)
     } catch (error) {
       console.error('Error fetching room types:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch room types",
+        description: error instanceof Error ? error.message : "Failed to fetch room types",
         variant: "destructive"
       })
     } finally {
@@ -93,11 +106,18 @@ export default function RoomTypesPage() {
               Add Room Type
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Room Type</DialogTitle>
+              <DialogTitle>Create Room Type</DialogTitle>
             </DialogHeader>
-            <RoomTypeForm onSuccess={handleRoomTypeCreated} />
+            <div className="mt-4">
+              <RoomTypeForm
+                onSuccess={() => {
+                  setIsDialogOpen(false)
+                  fetchRoomTypes()
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -6,22 +6,22 @@ import { usePathname } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { ChevronDown, PanelLeft } from "lucide-react"
-import { cn } from "@/lib/utils/styles"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { useSidebar } from '@/components/providers/sidebar-provider'
-import { navItems } from '@/config/nav'
+import { useSidebar } from "@/components/providers/sidebar-provider"
+import { navItems } from "@/config/nav"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from "@/components/ui/tooltip"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible'
+} from "@/components/ui/collapsible"
 
 const SIDEBAR_WIDTH = '16rem'
 const SIDEBAR_WIDTH_MOBILE = '18rem'

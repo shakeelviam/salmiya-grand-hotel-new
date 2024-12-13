@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -27,13 +27,20 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
+interface RoomType {
+  id: string
+  name: string
+  basePrice: number
+  adultCapacity: number
+  childCapacity: number
+  amenities: string[]
+  description: string
+}
+
 const formSchema = z.object({
   number: z.string().min(1, "Room number is required"),
   floor: z.string().min(1, "Floor is required"),
   roomTypeId: z.string().min(1, "Room type is required"),
-  description: z.string().optional(),
-  descriptionAr: z.string().optional(),
-  amenities: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -41,16 +48,17 @@ export default function CreateRoomPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [roomTypes, setRoomTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedRoomType, setSelectedRoomType] = useState<RoomType | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      description: '',
-      descriptionAr: '',
-      amenities: '',
+      number: '',
+      floor: '',
+      roomTypeId: '',
       notes: '',
     },
   })
@@ -89,6 +97,15 @@ export default function CreateRoomPage() {
   }, [toast])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!selectedRoomType) {
+      toast({
+        title: "Error",
+        description: "Please select a room type",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setSubmitting(true)
       setError(null)
@@ -97,7 +114,10 @@ export default function CreateRoomPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          amenities: selectedRoomType.amenities, // Use amenities from selected room type
+        }),
       })
 
       if (!response.ok) {
@@ -122,6 +142,13 @@ export default function CreateRoomPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Update selected room type when roomTypeId changes
+  const handleRoomTypeChange = (roomTypeId: string) => {
+    const roomType = roomTypes.find(type => type.id === roomTypeId)
+    setSelectedRoomType(roomType || null)
+    form.setValue('roomTypeId', roomTypeId)
   }
 
   if (loading) {
@@ -189,7 +216,7 @@ export default function CreateRoomPage() {
                     <FormItem>
                       <FormLabel>Room Number</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="e.g. 101" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -203,7 +230,7 @@ export default function CreateRoomPage() {
                     <FormItem>
                       <FormLabel>Floor</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="e.g. 1" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -216,10 +243,10 @@ export default function CreateRoomPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Room Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={handleRoomTypeChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select room type" />
+                            <SelectValue placeholder="Select a room type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -234,77 +261,48 @@ export default function CreateRoomPage() {
                     </FormItem>
                   )}
                 />
+
+                {selectedRoomType && (
+                  <FormItem>
+                    <FormLabel>Amenities (from room type)</FormLabel>
+                    <div className="text-sm text-muted-foreground border rounded-md p-2">
+                      {selectedRoomType.amenities.join(', ') || 'No amenities'}
+                    </div>
+                  </FormItem>
+                )}
+
+                <div className="col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Any additional notes about the room" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (English)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="descriptionAr"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Arabic)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} dir="rtl" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="amenities"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amenities</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder="List the amenities available in this room"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder="Add any special notes about this room"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <div className="flex justify-end gap-4">
-                <Button variant="outline" onClick={() => router.back()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={submitting}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={submitting}>
                   {submitting ? (
-                    "Creating..."
+                    <span>Creating...</span>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />

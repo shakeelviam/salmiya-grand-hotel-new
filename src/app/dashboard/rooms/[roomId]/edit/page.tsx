@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -34,23 +34,28 @@ const formSchema = z.object({
   number: z.string().min(1, "Room number is required"),
   floor: z.string().min(1, "Floor is required"),
   roomTypeId: z.string().min(1, "Room type is required"),
-  description: z.string().optional(),
-  isAvailable: z.boolean(),
   status: z.enum(['AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'CLEANING']),
-  notes: z.string().optional(),
+  notes: z.string().nullable(),
+  isActive: z.boolean(),
 })
+
+type FormData = z.infer<typeof formSchema>
 
 export default function EditRoomPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [roomTypes, setRoomTypes] = useState<Array<{ id: string; name: string }>>([])
-  const [submitting, setSubmitting] = useState(false)
+  const [roomTypes, setRoomTypes] = useState<Array<{ id: string; name: string; description: string }>>([])
   const [error, setError] = useState<string | null>(null)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      notes: null,
+      status: 'AVAILABLE',
+      isActive: true,
+    }
   })
 
   useEffect(() => {
@@ -58,40 +63,35 @@ export default function EditRoomPage() {
       try {
         setLoading(true)
         setError(null)
+
         const [roomResponse, roomTypesResponse] = await Promise.all([
           fetch(`/api/rooms/${params.roomId}`),
           fetch('/api/room-types')
         ])
 
         if (!roomResponse.ok || !roomTypesResponse.ok) {
-          throw new Error('Failed to fetch data')
+          throw new Error("Failed to load data")
         }
 
-        const [room, { roomTypes: types }] = await Promise.all([
+        const [roomData, { roomTypes: types }] = await Promise.all([
           roomResponse.json(),
           roomTypesResponse.json()
         ])
 
-        if (!Array.isArray(types)) {
-          throw new Error('Invalid room types data received')
-        }
-
         setRoomTypes(types)
         form.reset({
-          number: room.number,
-          floor: room.floor,
-          roomTypeId: room.roomTypeId,
-          description: room.description || '',
-          isAvailable: room.isAvailable,
-          status: room.status,
-          notes: room.notes || '',
+          number: roomData.number,
+          floor: roomData.floor,
+          roomTypeId: roomData.roomTypeId,
+          status: roomData.status,
+          notes: roomData.notes,
+          isActive: roomData.isActive,
         })
       } catch (error) {
-        console.error('Error fetching data:', error)
-        setError(error instanceof Error ? error.message : 'Failed to load data')
+        setError("Failed to load room data")
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Failed to load data",
+          description: "Failed to load room data",
           variant: "destructive",
         })
       } finally {
@@ -99,47 +99,37 @@ export default function EditRoomPage() {
       }
     }
 
-    if (params.roomId) {
-      fetchData()
-    }
+    fetchData()
   }, [params.roomId, form, toast])
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: FormData) => {
     try {
-      setSubmitting(true)
-      setError(null)
       const response = await fetch(`/api/rooms/${params.roomId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...values,
-          isAvailable: values.status === 'AVAILABLE',
-        }),
+        body: JSON.stringify(data),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update room')
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update room")
       }
 
       toast({
         title: "Success",
         description: "Room updated successfully",
       })
+      
+      router.refresh()
       router.push('/dashboard/rooms')
     } catch (error) {
-      console.error('Error updating room:', error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to update room"
-      setError(errorMessage)
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to update room",
         variant: "destructive",
       })
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -177,6 +167,8 @@ export default function EditRoomPage() {
     )
   }
 
+  const selectedRoomType = roomTypes.find(type => type.id === form.watch('roomTypeId'))
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -203,7 +195,7 @@ export default function EditRoomPage() {
                     <FormItem>
                       <FormLabel>Room Number</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} placeholder="Enter room number" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -217,7 +209,7 @@ export default function EditRoomPage() {
                     <FormItem>
                       <FormLabel>Floor</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} placeholder="Enter floor" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -233,7 +225,7 @@ export default function EditRoomPage() {
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select room type" />
+                            <SelectValue placeholder="Select a room type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -254,7 +246,7 @@ export default function EditRoomPage() {
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Room Status</FormLabel>
+                      <FormLabel>Status</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -264,8 +256,8 @@ export default function EditRoomPage() {
                         <SelectContent>
                           <SelectItem value="AVAILABLE">Available</SelectItem>
                           <SelectItem value="OCCUPIED">Occupied</SelectItem>
-                          <SelectItem value="MAINTENANCE">Under Maintenance</SelectItem>
-                          <SelectItem value="CLEANING">Being Cleaned</SelectItem>
+                          <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                          <SelectItem value="CLEANING">Cleaning</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -274,64 +266,64 @@ export default function EditRoomPage() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {selectedRoomType?.description && (
+                <div className="space-y-2">
+                  <Label>Room Type Description</Label>
+                  <p className="text-sm text-muted-foreground">{selectedRoomType.description}</p>
+                </div>
+              )}
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder="Add any special notes about this room (e.g., maintenance details, cleaning requirements)"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Enter additional notes"
+                          className="min-h-[100px]"
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="isAvailable"
-                render={({ field }) => (
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                    <Label htmlFor="isAvailable">Available for Booking</Label>
-                  </div>
-                )}
-              />
+              <div className="flex items-center gap-8">
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <Label>Active</Label>
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="flex justify-end gap-4">
-                <Button variant="outline" onClick={() => router.back()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Changes
-                    </>
-                  )}
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
                 </Button>
               </div>
             </form>

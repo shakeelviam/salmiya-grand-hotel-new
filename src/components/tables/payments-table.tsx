@@ -3,9 +3,17 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
-import { formatDate } from "@/lib/utils/date"
-import { formatCurrency } from "@/lib/utils/currency"
+import { formatDate } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { Payment } from "@/app/dashboard/payments/page"
+
+function AmountCell({ amount }: { amount: number }) {
+  return (
+    <div className="text-right font-medium">
+      {formatCurrency(amount)}
+    </div>
+  )
+}
 
 const columns: ColumnDef<Payment>[] = [
   {
@@ -18,7 +26,7 @@ const columns: ColumnDef<Payment>[] = [
     header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"))
-      return <div className="text-right font-medium">{formatCurrency(amount, { currency: 'KWD', decimalPlaces: 3 })}</div>
+      return <AmountCell amount={amount} />
     },
   },
   {

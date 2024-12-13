@@ -20,9 +20,12 @@ import { toast } from "@/components/ui/use-toast"
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  descriptionAr: z.string().min(1, "Arabic description is required"),
   basePrice: z.string().transform((val) => parseFloat(val)),
-  capacity: z.string().transform((val) => parseInt(val)),
+  adultCapacity: z.string().transform((val) => parseInt(val)),
+  childCapacity: z.string().transform((val) => parseInt(val)),
+  extraBedCharge: z.string().transform((val) => parseFloat(val)),
   amenities: z.string().transform((val) => val.split(",").map((s) => s.trim())),
   imageUrl: z.string().url().optional(),
 })
@@ -36,8 +39,11 @@ export function RoomTypeForm() {
     defaultValues: {
       name: "",
       description: "",
+      descriptionAr: "",
       basePrice: "",
-      capacity: "",
+      adultCapacity: "",
+      childCapacity: "",
+      extraBedCharge: "",
       amenities: "",
       imageUrl: "",
     },
@@ -98,12 +104,23 @@ export function RoomTypeForm() {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Description (English)</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="A luxurious room with ocean view..."
-                  {...field}
-                />
+                <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="descriptionAr"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Arabic)</FormLabel>
+              <FormControl>
+                <Textarea {...field} dir="rtl" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -127,18 +144,46 @@ export function RoomTypeForm() {
 
           <FormField
             control={form.control}
-            name="capacity"
+            name="adultCapacity"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Capacity</FormLabel>
+                <FormLabel>Adult Capacity</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="2" {...field} />
+                  <Input type="number" min="1" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="childCapacity"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Child Capacity</FormLabel>
+              <FormControl>
+                <Input type="number" min="0" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="extraBedCharge"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Extra Bed Charge</FormLabel>
+              <FormControl>
+                <Input type="number" step="0.001" min="0" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

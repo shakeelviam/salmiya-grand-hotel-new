@@ -81,8 +81,8 @@ export function UserForm({ onSuccess, user }: UserFormProps) {
   async function onSubmit(values: z.infer<typeof userSchema>) {
     try {
       setLoading(true)
-      const url = user ? `/api/users/${user.id}` : '/api/users'
-      const method = user ? 'PUT' : 'POST'
+      const url = user ? `/api/users/${user.id}` : '/api/users'"
+      const method = user ? 'PUT' : 'POST'"
 
       const response = await fetch(url, {
         method,

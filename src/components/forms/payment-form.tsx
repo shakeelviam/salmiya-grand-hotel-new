@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatCurrency, parseCurrency } from "@/lib/utils/currency"
+import { formatCurrency, parseCurrency } from "@/lib/utils"
 
 const formSchema = z.object({
   reservationId: z.string().min(1, "Reservation is required"),

@@ -1,32 +1,62 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { z } from "zod"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
+const updateRoomSchema = z.object({
+  number: z.string().min(1, "Room number is required"),
+  floor: z.string().min(1, "Floor is required"),
+  roomTypeId: z.string().min(1, "Room type is required"),
+  status: z.enum(['AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'CLEANING']),
+  notes: z.string().nullable(),
+  isActive: z.boolean(),
+})
+
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: { roomId: string } }
 ) {
   try {
+    if (!params.roomId) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Room ID is required",
+        }),
+        { status: 400 }
+      )
+    }
+
     const room = await prisma.room.findUnique({
-      where: { id: params.roomId },
-      include: {
-        roomType: true,
+      where: {
+        id: params.roomId,
       },
+      include: {
+        roomType: true
+      }
     })
 
     if (!room) {
-      return NextResponse.json(
-        { error: "Room not found" },
+      return new NextResponse(
+        JSON.stringify({
+          error: "Room not found",
+        }),
         { status: 404 }
       )
     }
 
-    return NextResponse.json(room)
+    // Ensure isAvailable matches status before sending response
+    const updatedRoom = {
+      ...room,
+      isAvailable: room.status === 'AVAILABLE'
+    }
+
+    return new NextResponse(JSON.stringify(updatedRoom), { status: 200 })
   } catch (error) {
-    console.error("Error fetching room:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch room" },
+    return new NextResponse(
+      JSON.stringify({
+        error: "Internal Server Error",
+      }),
       { status: 500 }
     )
   }
@@ -39,135 +69,60 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
+      return new NextResponse(
+        JSON.stringify({
+          error: "Unauthorized",
+        }),
         { status: 401 }
+      )
+    }
+
+    if (!params.roomId) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Room ID is required",
+        }),
+        { status: 400 }
       )
     }
 
     const json = await request.json()
-    const { number, floor, roomTypeId, description, isAvailable, status, notes } = json
+    const body = updateRoomSchema.parse(json)
 
-    // Validate required fields
-    if (!number || !floor || !roomTypeId) {
-      return NextResponse.json(
-        { error: "Required fields missing: number, floor, and roomType are required" },
-        { status: 400 }
-      )
-    }
-
-    // Validate status
-    const validStatuses = ['AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'CLEANING']
-    if (status && !validStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: "Invalid status value" },
-        { status: 400 }
-      )
-    }
-
-    // Check if room number is unique (excluding current room)
-    if (number) {
-      const existingRoom = await prisma.room.findFirst({
-        where: {
-          number,
-          NOT: {
-            id: params.roomId
-          }
-        }
-      })
-
-      if (existingRoom) {
-        return NextResponse.json(
-          { error: "Room number already exists" },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Verify room type exists
-    const roomType = await prisma.roomType.findUnique({
-      where: { id: roomTypeId }
-    })
-
-    if (!roomType) {
-      return NextResponse.json(
-        { error: "Invalid room type selected" },
-        { status: 400 }
-      )
-    }
+    // Set isAvailable based on status
+    const isAvailable = body.status === 'AVAILABLE'
 
     const room = await prisma.room.update({
-      where: { id: params.roomId },
+      where: {
+        id: params.roomId,
+      },
       data: {
-        number,
-        floor,
-        roomTypeId,
-        description,
-        isAvailable,
-        status,
-        notes,
-        updatedAt: new Date(),
+        number: body.number,
+        floor: body.floor,
+        roomTypeId: body.roomTypeId,
+        status: body.status,
+        notes: body.notes,
+        isActive: body.isActive,
+        isAvailable: isAvailable,
       },
       include: {
-        roomType: true,
-      },
-    })
-
-    return NextResponse.json(room)
-  } catch (error) {
-    console.error("Error updating room:", error)
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
-    }
-    return NextResponse.json(
-      { error: "Failed to update room" },
-      { status: 500 }
-    )
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { roomId: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    // Check if room has any reservations
-    const reservations = await prisma.reservation.findMany({
-      where: {
-        roomId: params.roomId,
-        status: {
-          in: ['CONFIRMED', 'CHECKED_IN']
-        }
+        roomType: true
       }
     })
 
-    if (reservations.length > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete room with active reservations" },
-        { status: 400 }
-      )
+    return new NextResponse(JSON.stringify(room), { status: 200 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({
+        error: "Invalid request data",
+        details: error.errors,
+      }), { status: 400 })
     }
 
-    await prisma.room.delete({
-      where: { id: params.roomId },
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting room:", error)
-    return NextResponse.json(
-      { error: "Failed to delete room" },
+    return new NextResponse(
+      JSON.stringify({
+        error: "Internal Server Error",
+      }),
       { status: 500 }
     )
   }

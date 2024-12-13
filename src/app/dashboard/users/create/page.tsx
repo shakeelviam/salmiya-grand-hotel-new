@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { UserForm } from '@/components/forms/user-form'
-import { useRouter } from 'next/navigation'
+import { UserForm } from "@/components/forms/user-form"
+import { useRouter } from "next/navigation"
 
 export default function CreateUserPage() {
   const router = useRouter()

@@ -1,6 +1,6 @@
-'use client'
+"use client"
 
-import { useSession } from 'next-auth/react'
+import { useSession } from "next-auth/react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 

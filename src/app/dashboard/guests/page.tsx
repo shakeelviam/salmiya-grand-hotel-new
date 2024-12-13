@@ -1,16 +1,11 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { useState, useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -18,26 +13,26 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from "@/components/ui/form";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { Users, Plus, Star } from "lucide-react"
-import { nationalities } from "@/lib/nationalities"
-import { GuestsTable } from "@/components/tables/guests-table"
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { Users, Plus, Star } from "lucide-react";
+import { nationalities } from "@/lib/nationalities";
+import { GuestsTable } from "@/components/tables/guests-table";
 
 const guestSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -48,55 +43,57 @@ const guestSchema = z.object({
   visaNumber: z.string().optional(),
   passportNumber: z.string().min(1, "Passport number is required"),
   nationality: z.string().min(1, "Nationality is required"),
-  passportCopy: z.any().refine((file) => file?.length > 0, "Passport copy is required"),
+  passportCopy: z
+    .any()
+    .refine((file) => file?.length > 0, "Passport copy is required"),
   otherDocuments: z.any().optional(),
-})
+});
 
-type GuestFormValues = z.infer<typeof guestSchema>
+type GuestFormValues = z.infer<typeof guestSchema>;
 
 interface Guest {
-  id: string
-  name: string
-  email: string
-  phone: string
-  nationality: string
-  passportNumber: string
-  civilId?: string
-  visaNumber?: string
-  passportCopy: string
-  otherDocuments: string[]
-  vipStatus: boolean
-  notes?: string
-  createdAt: string
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  nationality: string;
+  passportNumber: string;
+  civilId?: string;
+  visaNumber?: string;
+  passportCopy: string;
+  otherDocuments: string[];
+  vipStatus: boolean;
+  notes?: string;
+  createdAt: string;
 }
 
 export default function GuestsPage() {
-  const [open, setOpen] = useState(false)
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [guests, setGuests] = useState<Guest[]>([])
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [guests, setGuests] = useState<Guest[]>([]);
 
   const fetchGuests = async () => {
     try {
-      const response = await fetch("/api/guests")
+      const response = await fetch("/api/guests");
       if (!response.ok) {
-        throw new Error("Failed to fetch guests")
+        throw new Error("Failed to fetch guests");
       }
-      const data = await response.json()
-      setGuests(data)
+      const data = await response.json();
+      setGuests(data);
     } catch (error) {
-      console.error("Error fetching guests:", error)
+      console.error("Error fetching guests:", error);
       toast({
         title: "Error",
         description: "Failed to fetch guests",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   useEffect(() => {
-    fetchGuests()
-  }, [])
+    fetchGuests();
+  }, []);
 
   const form = useForm<GuestFormValues>({
     resolver: zodResolver(guestSchema),
@@ -110,69 +107,70 @@ export default function GuestsPage() {
       passportNumber: "",
       nationality: "",
     },
-  })
+  });
 
   const onSubmit = async (data: GuestFormValues) => {
     try {
-      setLoading(true)
-      
+      setLoading(true);
+
       // Create a single FormData instance for all data
-      const formData = new FormData()
-      
+      const formData = new FormData();
+
       // Add all text fields
-      formData.append("guestName", `${data.firstName} ${data.lastName}`)
-      formData.append("email", data.email)
-      formData.append("phone", data.mobileNumber)
-      formData.append("nationality", data.nationality)
-      formData.append("passportNumber", data.passportNumber)
-      if (data.civilId) formData.append("civilId", data.civilId)
-      if (data.visaNumber) formData.append("visaNumber", data.visaNumber)
-      
+      formData.append("guestName", `${data.firstName} ${data.lastName}`);
+      formData.append("email", data.email);
+      formData.append("phone", data.mobileNumber);
+      formData.append("nationality", data.nationality);
+      formData.append("passportNumber", data.passportNumber);
+      if (data.civilId) formData.append("civilId", data.civilId);
+      if (data.visaNumber) formData.append("visaNumber", data.visaNumber);
+
       // Add passport copy
       if (data.passportCopy?.[0]) {
-        formData.append("passportCopy", data.passportCopy[0])
+        formData.append("passportCopy", data.passportCopy[0]);
       }
-      
+
       // Add other documents
       if (data.otherDocuments?.length) {
         Array.from(data.otherDocuments).forEach((file) => {
-          formData.append("otherDocuments", file)
-        })
+          formData.append("otherDocuments", file);
+        });
       }
 
       // Create guest with all data
       const response = await fetch("/api/guests", {
         method: "POST",
         body: formData,
-      })
+      });
 
-      const result = await response.json()
-      
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create guest")
+        throw new Error(result.error || "Failed to create guest");
       }
 
       // Success handling
       toast({
         title: "Success",
         description: "Guest has been created successfully",
-      })
-      
+      });
+
       // Reset form, close dialog, and refresh guest list
-      setOpen(false)
-      form.reset()
-      fetchGuests()
+      setOpen(false);
+      form.reset();
+      fetchGuests();
     } catch (error) {
-      console.error("Guest creation error:", error)
+      console.error("Guest creation error:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create guest",
+        description:
+          error instanceof Error ? error.message : "Failed to create guest",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -190,7 +188,10 @@ export default function GuestsPage() {
               <DialogTitle>Add New Guest</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -227,7 +228,11 @@ export default function GuestsPage() {
                     <FormItem>
                       <FormLabel>Mobile Number</FormLabel>
                       <FormControl>
-                        <Input type="tel" placeholder="+965 xxxx xxxx" {...field} />
+                        <Input
+                          type="tel"
+                          placeholder="+965 xxxx xxxx"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -241,7 +246,11 @@ export default function GuestsPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="john.doe@example.com" {...field} />
+                        <Input
+                          type="email"
+                          placeholder="john.doe@example.com"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -285,7 +294,10 @@ export default function GuestsPage() {
                       <FormItem>
                         <FormLabel>Passport Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Passport Number" {...field} />
+                          <Input
+                            placeholder="Enter Passport Number"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -297,7 +309,10 @@ export default function GuestsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nationality</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select nationality" />
@@ -373,5 +388,5 @@ export default function GuestsPage() {
         <GuestsTable guests={guests} onUpdate={fetchGuests} />
       </div>
     </div>
-  )
+  );
 }

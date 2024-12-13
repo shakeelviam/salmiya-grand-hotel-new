@@ -61,8 +61,8 @@ export function PermissionForm({ onSuccess, permission }: PermissionFormProps) {
   async function onSubmit(values: z.infer<typeof permissionSchema>) {
     try {
       setLoading(true)
-      const url = permission ? `/api/permissions/${permission.id}` : '/api/permissions'
-      const method = permission ? 'PUT' : 'POST'
+      const url = permission ? `/api/permissions/${permission.id}` : '/api/permissions'"
+      const method = permission ? 'PUT' : 'POST'"
 
       const response = await fetch(url, {
         method,

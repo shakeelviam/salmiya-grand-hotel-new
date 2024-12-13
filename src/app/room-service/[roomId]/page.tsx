@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { getRoomServiceItems } from "@/lib/api"
 import { toast } from "@/components/ui/use-toast"
-import { formatCurrency } from "@/lib/utils/currency"
+import { formatCurrency } from "@/lib/utils"
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -171,7 +171,7 @@ export default function RoomServiceMenu() {
                   <p className="text-sm text-muted-foreground">
                     {item.description}
                   </p>
-                  <p className="font-medium">{formatCurrency(item.standard_rate, 'KWD', 3)}</p>
+                  <p className="font-medium">{formatCurrency(item.standard_rate, 'KWD'", 3)}</p>
                 </div>
                 <Button onClick={() => addToOrder(item)}>
                   Add to Order

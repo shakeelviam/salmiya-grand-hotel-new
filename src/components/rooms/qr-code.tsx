@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from 'react'
-import QRCode from 'qrcode'
+import { useEffect, useState } from "react"
+import QRCode from "qrcode"
 
 interface QRCodeProps {
   roomId: string
@@ -9,24 +9,32 @@ interface QRCodeProps {
 }
 
 export function RoomQRCode({ roomId, size = 200 }: QRCodeProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [qrCode, setQrCode] = useState<string>("")
 
   useEffect(() => {
-    if (canvasRef.current) {
-      // Create URL for room service
-      const roomServiceUrl = `${window.location.origin}/room-service/${roomId}`
-      
-      // Generate QR code
-      QRCode.toCanvas(canvasRef.current, roomServiceUrl, {
-        width: size,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
-      })
+    const generateQRCode = async () => {
+      try {
+        // Create URL for room service
+        const roomServiceUrl = `${window.location.origin}/room-service/${roomId}`
+        
+        // Generate QR code
+        const qrCodeDataUrl = await QRCode.toDataURL(roomServiceUrl)
+        setQrCode(qrCodeDataUrl)
+      } catch (error) {
+        console.error("Error generating QR code:", error)
+      }
     }
-  }, [roomId, size])
 
-  return <canvas ref={canvasRef} />
+    generateQRCode()
+  }, [roomId])
+
+  if (!qrCode) {
+    return <div>Loading QR Code...</div>
+  }
+
+  return (
+    <div className="flex items-center justify-center">
+      <img src={qrCode} alt="QR Code" className="w-48 h-48" />
+    </div>
+  )
 }

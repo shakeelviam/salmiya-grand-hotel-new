@@ -1,9 +1,16 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Save } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/components/ui/use-toast"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
 import {
   Form,
   FormControl,
@@ -11,332 +18,344 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useToast } from '@/hooks/use-toast'
+} from "@/components/ui/form"
 
 const formSchema = z.object({
   checkInTime: z.string(),
   checkOutTime: z.string(),
-  earlyCheckOutPolicy: z.object({
-    type: z.enum(['PERCENTAGE', 'FIXED', 'NO_PENALTY']),
-    value: z.number().min(0),
-  }),
-  noShowPolicy: z.object({
-    retainAdvance: z.boolean(),
-    refundPercentage: z.number().min(0).max(100),
-  }),
-  lateCheckOutPolicy: z.object({
-    type: z.enum(['HOURLY', 'FIXED']),
-    value: z.number().min(0),
-  }),
-  autoCheckOut: z.object({
-    enabled: z.boolean(),
-    gracePeriod: z.number().min(0),
-  }),
-}).refine((data) => {
-  const checkIn = new Date(`1970-01-01T${data.checkInTime}`);
-  const checkOut = new Date(`1970-01-01T${data.checkOutTime}`);
-  return checkOut > checkIn;
-}, {
-  message: "Check-out time must be after check-in time",
-  path: ["checkOutTime"],
-});
+  lateCheckOutFee: z.number().min(0),
+  earlyCheckOutFee: z.number().min(0),
+  noShowFee: z.number().min(0),
+  freeCancellationHours: z.number().min(0),
+  cancellationFee: z.number().min(0),
+  refundPercentage: z.number().min(0).max(100),
+  lateRefundPercentage: z.number().min(0).max(100),
+  unconfirmedHoldHours: z.number().min(0),
+})
 
-type SettingsFormValues = z.infer<typeof formSchema>
+type FormData = z.infer<typeof formSchema>
 
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(false)
+  const router = useRouter()
   const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const form = useForm<SettingsFormValues>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      checkInTime: '14:00',
-      checkOutTime: '12:00',
-      earlyCheckOutPolicy: {
-        type: 'NO_PENALTY',
-        value: 0,
-      },
-      noShowPolicy: {
-        retainAdvance: true,
-        refundPercentage: 0,
-      },
-      lateCheckOutPolicy: {
-        type: 'HOURLY',
-        value: 50,
-      },
-      autoCheckOut: {
-        enabled: true,
-        gracePeriod: 30,
-      },
-    },
+      checkInTime: "14:00",
+      checkOutTime: "12:00",
+      lateCheckOutFee: 0,
+      earlyCheckOutFee: 0,
+      noShowFee: 0,
+      freeCancellationHours: 24,
+      cancellationFee: 0,
+      refundPercentage: 100,
+      lateRefundPercentage: 0,
+      unconfirmedHoldHours: 24,
+    }
   })
 
-  const onSubmit = async (values: SettingsFormValues) => {
+  useEffect(() => {
+    const fetchPolicy = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/settings/hotel-policy')
+        if (!response.ok) {
+          throw new Error('Failed to load hotel policy')
+        }
+        const data = await response.json()
+        
+        // Convert string numbers to actual numbers for the form
+        const formData = {
+          ...data,
+          lateCheckOutFee: Number(data.lateCheckOutFee),
+          earlyCheckOutFee: Number(data.earlyCheckOutFee),
+          noShowFee: Number(data.noShowFee),
+          cancellationFee: Number(data.cancellationFee),
+        }
+        
+        form.reset(formData)
+      } catch (error) {
+        setError('Failed to load hotel policy')
+        toast({
+          title: "Error",
+          description: "Failed to load hotel policy",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPolicy()
+  }, [form, toast])
+
+  const onSubmit = async (data: FormData) => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+      const response = await fetch('/api/settings/hotel-policy', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save settings')
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update hotel policy")
       }
 
       toast({
-        title: 'Success',
-        description: 'Settings saved successfully',
+        title: "Success",
+        description: "Hotel policy updated successfully",
       })
+      
+      router.refresh()
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to save settings',
-        variant: 'destructive',
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update hotel policy",
+        variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-[200px]" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-[200px]" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="text-red-500 text-lg">{error}</div>
+        <Button variant="outline" onClick={() => router.refresh()}>
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-8">Hotel Settings</h1>
-      
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Check-in & Check-out Times</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="checkInTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Check-in Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="checkOutTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Check-out Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Hotel Policies</h1>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Early Check-out Policy</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="earlyCheckOutPolicy.type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Penalty Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Policy Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="checkInTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check-in Time</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select penalty type" />
-                        </SelectTrigger>
+                        <Input type="time" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="NO_PENALTY">No Penalty</SelectItem>
-                        <SelectItem value="PERCENTAGE">Percentage of Remaining Stay</SelectItem>
-                        <SelectItem value="FIXED">Fixed Amount</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="earlyCheckOutPolicy.value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Penalty Value</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>No-show Policy</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="noShowPolicy.retainAdvance"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between">
-                    <FormLabel>Retain Advance Payment</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="noShowPolicy.refundPercentage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Refund Percentage</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Late Check-out Policy</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="lateCheckOutPolicy.type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fee Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                <FormField
+                  control={form.control}
+                  name="checkOutTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check-out Time</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select fee type" />
-                        </SelectTrigger>
+                        <Input type="time" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="HOURLY">Hourly Rate</SelectItem>
-                        <SelectItem value="FIXED">Fixed Fee</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lateCheckOutPolicy.value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fee Amount (KWD)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Auto Check-out Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="autoCheckOut.enabled"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between">
-                    <FormLabel>Enable Auto Check-out</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="autoCheckOut.gracePeriod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Grace Period (minutes)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                <FormField
+                  control={form.control}
+                  name="lateCheckOutFee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Late Check-out Fee (KWD)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </form>
-      </Form>
+                <FormField
+                  control={form.control}
+                  name="earlyCheckOutFee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Early Check-out Fee (KWD)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="noShowFee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>No-show Fee (KWD)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="freeCancellationHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Free Cancellation Period (Hours)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cancellationFee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Late Cancellation Fee (KWD)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="refundPercentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Refund Percentage (%)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          min="0"
+                          max="100"
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lateRefundPercentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Late Cancellation Refund (%)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          min="0"
+                          max="100"
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unconfirmedHoldHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unconfirmed Reservation Hold (Hours)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

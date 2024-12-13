@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -22,13 +22,13 @@ import {
 } from "lucide-react"
 
 export type ReservationStatus = 
-  | 'DRAFT'
-  | 'TENTATIVE'
-  | 'CONFIRMED'
-  | 'CHECKED_IN'
-  | 'CHECKED_OUT'
-  | 'CANCELLED'
-  | 'NO_SHOW'
+  | 'DRAFT'"
+  | 'TENTATIVE'"
+  | 'CONFIRMED'"
+  | 'CHECKED_IN'"
+  | 'CHECKED_OUT'"
+  | 'CANCELLED'"
+  | 'NO_SHOW'"
 
 interface StatusConfig {
   label: string
@@ -40,37 +40,37 @@ const statusConfig: Record<ReservationStatus, StatusConfig> = {
   DRAFT: {
     label: 'Draft',
     icon: <FileEdit className="h-4 w-4" />,
-    color: 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+    color: 'bg-gray-100 hover:bg-gray-200 text-gray-900'"
   },
   TENTATIVE: {
     label: 'Tentative',
     icon: <Clock className="h-4 w-4" />,
-    color: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-900'
+    color: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-900'"
   },
   CONFIRMED: {
     label: 'Confirmed',
     icon: <CalendarCheck className="h-4 w-4" />,
-    color: 'bg-green-100 hover:bg-green-200 text-green-900'
+    color: 'bg-green-100 hover:bg-green-200 text-green-900'"
   },
   CHECKED_IN: {
     label: 'Checked In',
     icon: <DoorOpen className="h-4 w-4" />,
-    color: 'bg-blue-100 hover:bg-blue-200 text-blue-900'
+    color: 'bg-blue-100 hover:bg-blue-200 text-blue-900'"
   },
   CHECKED_OUT: {
     label: 'Checked Out',
     icon: <DoorClosed className="h-4 w-4" />,
-    color: 'bg-purple-100 hover:bg-purple-200 text-purple-900'
+    color: 'bg-purple-100 hover:bg-purple-200 text-purple-900'"
   },
   CANCELLED: {
     label: 'Cancelled',
     icon: <Ban className="h-4 w-4" />,
-    color: 'bg-red-100 hover:bg-red-200 text-red-900'
+    color: 'bg-red-100 hover:bg-red-200 text-red-900'"
   },
   NO_SHOW: {
     label: 'No Show',
     icon: <AlertTriangle className="h-4 w-4" />,
-    color: 'bg-orange-100 hover:bg-orange-200 text-orange-900'
+    color: 'bg-orange-100 hover:bg-orange-200 text-orange-900'"
   }
 }
 

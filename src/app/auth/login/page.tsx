@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -12,11 +12,11 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
-import { Icons } from '@/components/ui/icons'
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Icons } from "@/components/ui/icons"
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)

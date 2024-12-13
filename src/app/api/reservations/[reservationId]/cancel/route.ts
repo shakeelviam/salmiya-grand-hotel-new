@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { checkPermission } from "@/lib/permissions";
 
 export async function POST(
@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(request, authOptions);
     if (!session) {
       return NextResponse.json(
         { message: "Unauthorized. Please log in." },

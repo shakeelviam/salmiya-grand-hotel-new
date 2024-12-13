@@ -35,7 +35,7 @@ export async function POST(
     console.log("Has permission:", hasPermission);
     if (!hasPermission) {
       return NextResponse.json(
-        { error: "You don't have permission to perform this action" },
+        { error: "You don'"t have permission to perform this action" },
         { status: 403 }
       );
     }

@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { Sidebar, SidebarTrigger } from '@/components/ui/sidebar'
-import { SidebarProvider } from '@/components/providers/sidebar-provider'
+import { useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { Sidebar, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/providers/sidebar-provider"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()

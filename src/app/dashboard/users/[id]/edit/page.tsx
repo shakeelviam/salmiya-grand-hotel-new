@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { UserForm } from '@/components/forms/user-form'
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { UserForm } from "@/components/forms/user-form"
 
 export default function EditUserPage() {
   const { id } = useParams()

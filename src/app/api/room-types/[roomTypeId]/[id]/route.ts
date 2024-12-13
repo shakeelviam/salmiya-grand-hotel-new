@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { PrismaClient } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
+const prisma = new PrismaClient()
+
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { roomTypeId: string; id: string } }
 ) {
   try {
     // Get the session to check if the user is authenticated
@@ -29,13 +31,15 @@ export async function PUT(
         adultCapacity: json.adultCapacity,
         childCapacity: json.childCapacity,
         basePrice: json.basePrice,
-        extraBedPrice: json.extraBedPrice,
+        extraBedCharge: json.extraBedCharge,
+        amenities: json.amenities,
+        status: json.status
       },
     })
 
-    return NextResponse.json(roomType)
+    return NextResponse.json({ roomType })
   } catch (error) {
-    console.error("Failed to update room type:", error)
+    console.error("Error updating room type:", error)
     return NextResponse.json(
       { error: "Failed to update room type" },
       { status: 500 }
@@ -45,10 +49,9 @@ export async function PUT(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { roomTypeId: string; id: string } }
 ) {
   try {
-    // Get the session to check if the user is authenticated
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json(
@@ -57,23 +60,24 @@ export async function PATCH(
       )
     }
 
-    // Parse the incoming JSON request
-    const { isActive } = await request.json()
+    const json = await request.json()
+    const { status } = json
 
-    // Update the room type to toggle its active status
+    if (!status || !['ACTIVE', 'DISABLED'].includes(status)) {
+      return NextResponse.json(
+        { error: "Invalid status value" },
+        { status: 400 }
+      )
+    }
+
     const roomType = await prisma.roomType.update({
       where: { id: params.id },
-      data: {
-        isActive,
-      },
+      data: { status }
     })
 
-    return NextResponse.json({
-      message: `Room type ${isActive ? "enabled" : "disabled"} successfully`,
-      roomType,
-    })
+    return NextResponse.json({ roomType })
   } catch (error) {
-    console.error("Failed to update room type status:", error)
+    console.error("Error updating room type status:", error)
     return NextResponse.json(
       { error: "Failed to update room type status" },
       { status: 500 }

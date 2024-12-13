@@ -78,11 +78,11 @@ export default function UsersPage() {
   const getRoleBadgeVariant = (role: string) => {
     switch (role?.toUpperCase()) {
       case 'ADMIN':
-        return 'default'
+        return 'default'"
       case 'MANAGER':
-        return 'secondary'
+        return 'secondary'"
       default:
-        return 'outline'
+        return 'outline'"
     }
   }
 

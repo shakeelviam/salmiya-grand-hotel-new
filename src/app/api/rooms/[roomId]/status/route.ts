@@ -21,7 +21,7 @@ export async function PATCH(
       },
       data: {
         isActive,
-        status: isActive ? 'AVAILABLE' : 'MAINTENANCE'
+        status: isActive ? 'AVAILABLE' : 'MAINTENANCE'"
       },
       include: {
         roomType: true

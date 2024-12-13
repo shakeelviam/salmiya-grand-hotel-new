@@ -1,8 +1,8 @@
-import { Resend } from 'resend'
+import { Resend } from 'resend'"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-type EmailTemplate = 'verify-email' | 'reset-password' | 'welcome' | 'reservation-confirmation'
+type EmailTemplate = 'verify-email' | 'reset-password' | 'welcome' | 'reservation-confirmation'"
 
 const templates: Record<EmailTemplate, (params: any) => { subject: string, html: string }> = {
   'verify-email': (params: { name: string; verifyUrl: string }) => ({

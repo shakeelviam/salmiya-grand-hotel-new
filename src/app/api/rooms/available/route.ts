@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
         }
       },
       orderBy: {
-        number: 'asc'
+        number: 'asc'"
       }
     })
 

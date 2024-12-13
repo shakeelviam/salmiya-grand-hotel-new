@@ -23,7 +23,7 @@ export async function GET() {
 
     const permissions = await prisma.permission.findMany({
       orderBy: {
-        createdAt: 'desc'
+        createdAt: 'desc'"
       }
     })
 

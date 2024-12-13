@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { PaymentStatusBadge } from "@/components/reservations/payment-status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

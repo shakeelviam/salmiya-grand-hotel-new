@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatCurrency } from "@/lib/utils/currency"
+import { formatCurrency } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
@@ -168,7 +168,7 @@ export function MenuItemCard({ item, category }: Props) {
                 <p className="text-sm text-muted-foreground">{item.description}</p>
               </div>
               <div className="text-right">
-                <div className="font-semibold">{formatCurrency(item.price, 'KWD', 3)}</div>
+                <div className="font-semibold">{formatCurrency(item.price)}</div>
                 <Badge variant={item.isActive ? "default" : "secondary"}>
                   {item.isActive ? "Active" : "Inactive"}
                 </Badge>

@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         where: { 
           name: {
             equals: name.trim(),
-            mode: 'insensitive'
+            mode: 'insensitive'"
           }
         },
       })

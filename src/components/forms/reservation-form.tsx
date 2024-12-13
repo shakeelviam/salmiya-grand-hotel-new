@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatCurrency } from "@/lib/utils/currency"
+import { formatCurrency } from "@/lib/utils"
 
 const reservationSchema = z.object({
   guestId: z.string().min(1, "Guest is required"),

@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { LoginForm } from '@/components/auth/login-form'
+import { useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { LoginForm } from "@/components/auth/login-form"
 
 export default function HomePage() {
   const { data: session, status } = useSession()

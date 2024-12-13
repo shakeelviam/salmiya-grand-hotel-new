@@ -34,32 +34,32 @@ model Session {
 }
 
 model User {
-  id                String              @id @default(cuid())
-  name              String?
-  email             String?             @unique
-  emailVerified     DateTime?
-  image             String?
-  password          String?
-  accounts          Account[]
-  payments          Payment[]
-  permissionHistory PermissionHistory[]
-  reservations      Reservation[]
-  rolePermissions   RolePermission[]
-  sessions          Session[]
-  roles             Role[]              @relation("RoleToUser")
-  resetToken        String?             @unique
-  resetTokenExpiry  DateTime?
-  verifyToken       String?             @unique
-  verifyTokenExpiry DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  expenses          Expense[]
-  assignedTasks   MaintenanceTask[] @relation("AssignedTasks")
-  createdTasks    MaintenanceTask[] @relation("CreatedTasks")
-  completedTasks  MaintenanceTask[] @relation("CompletedTasks")
-  assignedHousekeepingTasks   HousekeepingTask[] @relation("AssignedHousekeepingTasks")
-  createdHousekeepingTasks    HousekeepingTask[] @relation("CreatedHousekeepingTasks")
-  completedHousekeepingTasks  HousekeepingTask[] @relation("CompletedHousekeepingTasks")
+  id                         String              @id @default(cuid())
+  name                       String?
+  email                      String?             @unique
+  emailVerified              DateTime?
+  image                      String?
+  password                   String?
+  accounts                   Account[]
+  payments                   Payment[]
+  permissionHistory          PermissionHistory[]
+  reservations               Reservation[]
+  rolePermissions            RolePermission[]
+  sessions                   Session[]
+  roles                      Role[]              @relation("RoleToUser")
+  resetToken                 String?             @unique
+  resetTokenExpiry           DateTime?
+  verifyToken                String?             @unique
+  verifyTokenExpiry          DateTime?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  expenses                   Expense[]
+  assignedTasks              MaintenanceTask[]   @relation("AssignedTasks")
+  createdTasks               MaintenanceTask[]   @relation("CreatedTasks")
+  completedTasks             MaintenanceTask[]   @relation("CompletedTasks")
+  assignedHousekeepingTasks  HousekeepingTask[]  @relation("AssignedHousekeepingTasks")
+  createdHousekeepingTasks   HousekeepingTask[]  @relation("CreatedHousekeepingTasks")
+  completedHousekeepingTasks HousekeepingTask[]  @relation("CompletedHousekeepingTasks")
 }
 
 model VerificationToken {
@@ -115,86 +115,107 @@ model PermissionHistory {
 }
 
 model RoomType {
-  id             String   @id @default(cuid())
-  name           String   @unique
-  description    String?
+  id             String        @id @default(cuid())
+  name           String        @unique
+  description    String
+  descriptionAr  String       @default("")
+  basePrice      Float
   adultCapacity  Int
   childCapacity  Int
   extraBedCharge Float
-  basePrice      Float
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  amenities      String[]
+  imageUrl       String?
+  status         String        @default("ACTIVE") // ACTIVE or DISABLED
   rooms          Room[]
   reservations   Reservation[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model Room {
-  id           String        @id @default(cuid())
-  number       String        @unique
-  floor        String
-  description  String?
-  descriptionAr String?
-  amenities    String?
-  notes        String?
-  isActive     Boolean       @default(true)
-  isAvailable  Boolean       @default(true)
-  roomTypeId   String
-  status       RoomStatus    @default(AVAILABLE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  roomType     RoomType      @relation(fields: [roomTypeId], references: [id])
-  reservations Reservation[]
-  roomServices RoomService[]
-  maintenanceTasks MaintenanceTask[]
-  housekeepingTasks HousekeepingTask[]
+  id                String             @id @default(cuid())
+  number            String             @unique
+  floor             String
+  roomTypeId        String
+  amenities         String[]
+  status            String             @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE, DISABLED
+  notes             String?
+  roomType          RoomType           @relation(fields: [roomTypeId], references: [id])
+  reservations      Reservation[]
+  roomServices      RoomService[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isActive          Boolean            @default(true)
+  maintenanceTasks  MaintenanceTask[]  @relation("RoomMaintenanceTasks")
+  housekeepingTasks HousekeepingTask[] @relation("RoomHousekeepingTasks")
+}
+
+model GroupBooking {
+  id                 String        @id @default(cuid())
+  groupName          String
+  organizationName   String?
+  contactPerson      String
+  contactEmail       String
+  contactPhone       String
+  specialRates       Boolean       @default(false)
+  discountPercentage Float?
+  notes              String?
+  status             String        @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  startDate          DateTime
+  endDate            DateTime
+  totalRooms         Int
+  reservations       Reservation[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 }
 
 model Reservation {
-  id              String            @id @default(cuid())
-  roomId          String?
-  roomTypeId      String
-  checkIn         DateTime
-  checkOut        DateTime
-  adults          Int
-  children        Int
-  extraBeds       Int               @default(0)
-  roomCharges     Float // Base room charges
-  extraBedCharges Float // Extra bed charges
-  serviceCharges  Float // Total service charges
-  totalAmount     Float // Total bill (room + extra bed + services)
-  advanceAmount   Float             @default(0) // Amount paid in advance
-  pendingAmount   Float // Amount pending to be paid
-  status          ReservationStatus @default(PENDING)
-  noShowDate      DateTime?
-  noShowFee       Float?
-  activityLogs    ActivityLog[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  userId          String
-  guestId         String
-  specialRequests String?
-  room            Room?             @relation(fields: [roomId], references: [id])
-  roomType        RoomType          @relation(fields: [roomTypeId], references: [id])
-  user            User              @relation(fields: [userId], references: [id])
-  guest           Guest             @relation(fields: [guestId], references: [id])
-  roomServices    RoomService[]
-  payments        Payment[]
-  bills           Bill[]
-  Order           Order[]
-  requiresAdminRefund Boolean @default(false)
+  id                  String            @id @default(cuid())
+  roomId              String?
+  roomTypeId          String
+  groupBookingId      String?
+  checkIn             DateTime
+  checkOut            DateTime
+  adults              Int
+  children            Int
+  extraBeds           Int               @default(0)
+  roomCharges         Float
+  extraBedCharges     Float
+  serviceCharges      Float
+  totalAmount         Float
+  advanceAmount       Float             @default(0)
+  pendingAmount       Float
+  status              ReservationStatus @default(PENDING)
+  noShowDate          DateTime?
+  noShowFee           Float?
+  activityLogs        ActivityLog[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  userId              String
+  guestId             String
+  specialRequests     String?
+  room                Room?             @relation(fields: [roomId], references: [id])
+  roomType            RoomType          @relation(fields: [roomTypeId], references: [id])
+  user                User              @relation(fields: [userId], references: [id])
+  guest               Guest             @relation(fields: [guestId], references: [id])
+  groupBooking        GroupBooking?     @relation(fields: [groupBookingId], references: [id])
+  roomServices        RoomService[]
+  payments            Payment[]
+  bills               Bill[]
+  Order               Order[]
+  requiresAdminRefund Boolean           @default(false)
 }
 
 model Bill {
   id              String        @id @default(cuid())
   reservationId   String
   billNumber      String        @unique
-  roomCharges     Float // Room charges for the stay
-  extraBedCharges Float // Extra bed charges
-  serviceCharges  Float // Total service charges
-  totalAmount     Float // Total bill amount
-  paidAmount      Float // Amount already paid
-  pendingAmount   Float // Amount pending
+  roomCharges     Float
+  extraBedCharges Float
+  serviceCharges  Float
+  totalAmount     Float
+  paidAmount      Float
+  pendingAmount   Float
   status          BillStatus    @default(UNPAID)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -218,7 +239,7 @@ model RoomService {
   status        ServiceStatus @default(PENDING)
   notes         String?
   amount        Float
-  billId        String? // Optional reference to a bill
+  billId        String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   room          Room          @relation(fields: [roomId], references: [id])
@@ -313,11 +334,11 @@ model PaymentMode {
 
 model Payment {
   id            String        @id @default(cuid())
-  billId        String? // Optional reference to a bill
+  billId        String?
   reservationId String
   amount        Float
   receiptNumber String        @unique
-  paymentType   PaymentType   @default(ADVANCE) // Whether it's advance or settlement
+  paymentType   PaymentType   @default(ADVANCE)
   status        PaymentStatus
   transactionId String?
   notes         String?
@@ -332,21 +353,21 @@ model Payment {
 }
 
 model Guest {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
-  email          String    @unique
+  email          String        @unique
   phone          String
   nationality    String
   passportNumber String
-  passportCopy   String?   // URL to uploaded passport copy
-  otherDocuments String[]  // Array of URLs to other documents
+  passportCopy   String?
+  otherDocuments String[]
   civilId        String?
   visaNumber     String?
-  vipStatus      Boolean   @default(false)
-  isActive       Boolean   @default(true)
+  vipStatus      Boolean       @default(false)
+  isActive       Boolean       @default(true)
   notes          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   reservations   Reservation[]
 }
 
@@ -359,14 +380,13 @@ enum RoomStatus {
 
 enum ReservationStatus {
   PENDING
-  RESERVED_UNPAID
   CONFIRMED
   CHECKED_IN
   CHECKED_OUT
   CANCELLED
-  REFUNDED
-  COMPLETED
   NO_SHOW
+  CHANGE_ROOM
+  REFUNDED
 }
 
 enum ServiceType {
@@ -383,8 +403,8 @@ enum ServiceStatus {
 }
 
 enum PaymentType {
-  ADVANCE // Payment made during reservation
-  SETTLEMENT // Payment made during checkout
+  ADVANCE
+  SETTLEMENT
 }
 
 enum PaymentStatus {
@@ -401,7 +421,7 @@ model Expense {
   description String
   amount      Float
   date        DateTime
-  status      String   @default("pending") // pending, approved
+  status      String   @default("pending")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdBy   User     @relation(fields: [createdById], references: [id])
@@ -412,10 +432,10 @@ model MaintenanceTask {
   id            String    @id @default(cuid())
   title         String
   description   String
-  priority      String    // high, medium, low
-  status        String    @default("pending") // pending, in-progress, completed, cancelled
+  priority      String
+  status        String    @default("pending")
   roomId        String?
-  room          Room?     @relation(fields: [roomId], references: [id])
+  room          Room?     @relation("RoomMaintenanceTasks", fields: [roomId], references: [id])
   assignedToId  String
   assignedTo    User      @relation("AssignedTasks", fields: [assignedToId], references: [id])
   createdById   String
@@ -430,11 +450,11 @@ model MaintenanceTask {
 
 model HousekeepingTask {
   id            String    @id @default(cuid())
-  type          String    // cleaning, turndown, inspection, supplies, laundry
-  priority      String    // high, medium, low
-  status        String    @default("pending") // pending, completed
+  type          String
+  priority      String
+  status        String    @default("pending")
   roomId        String
-  room          Room      @relation(fields: [roomId], references: [id])
+  room          Room      @relation("RoomHousekeepingTasks", fields: [roomId], references: [id])
   assignedToId  String
   assignedTo    User      @relation("AssignedHousekeepingTasks", fields: [assignedToId], references: [id])
   createdById   String
@@ -448,24 +468,40 @@ model HousekeepingTask {
 }
 
 model ActivityLog {
-  id              String    @id @default(cuid())
-  action          String
-  description     String
-  createdAt       DateTime  @default(now())
-  reservationId   String?
-  reservation     Reservation? @relation(fields: [reservationId], references: [id])
-  
+  id            String       @id @default(cuid())
+  action        String
+  description   String
+  createdAt     DateTime     @default(now())
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+
   @@index([reservationId])
 }
 
 model HotelSettings {
-  id                    String    @id @default(cuid())
-  checkInTime          String    // Format: HH:mm
-  checkOutTime         String    // Format: HH:mm
-  earlyCheckOutPolicy  Json      // { type: "PERCENTAGE" | "FIXED" | "NO_PENALTY", value: number }
-  noShowPolicy         Json      // { retainAdvance: boolean, refundPercentage: number }
-  lateCheckOutPolicy   Json      // { type: "HOURLY" | "FIXED", value: number }
-  autoCheckOut         Json      // { enabled: boolean, gracePeriod: number }
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                  String   @id @default(cuid())
+  checkInTime         String
+  checkOutTime        String
+  earlyCheckOutPolicy Json
+  noShowPolicy        Json
+  lateCheckOutPolicy  Json
+  autoCheckOut        Json
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model HotelPolicy {
+  id                    String   @id @default(cuid())
+  checkInTime          String
+  checkOutTime         String
+  lateCheckOutFee      Float
+  earlyCheckOutFee     Float
+  noShowFee            Float
+  freeCancellationHours Int
+  cancellationFee      Float
+  refundPercentage     Float
+  lateRefundPercentage Float
+  unconfirmedHoldHours Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

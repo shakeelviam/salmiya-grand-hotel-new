@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from "react"
 import {
@@ -12,17 +12,23 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { ActionButtons } from "@/components/ui/action-buttons"
-import { formatCurrency } from "@/lib/utils/currency"
-import { useRouter } from "next/router"
+import { formatCurrency } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 interface RoomType {
   id: string
   name: string
+  description: string
+  descriptionAr: string
   adultCapacity: number
   childCapacity: number
   basePrice: number
   extraBedCharge: number
-  isActive: boolean
+  amenities: string[]
+  imageUrl: string | null
+  status: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface RoomTypesTableProps {
@@ -35,16 +41,18 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
   const { toast } = useToast()
   const router = useRouter()
 
-  const handleToggleStatus = async (typeId: string, isActive: boolean) => {
+  const handleToggleStatus = async (typeId: string, currentStatus: string) => {
     try {
       setLoadingType(typeId)
       
-      const response = await fetch(`/api/room-types/${typeId}/status`, {
+      const response = await fetch(`/api/room-types/${typeId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ isActive: !isActive }),
+        body: JSON.stringify({ 
+          status: currentStatus === "ACTIVE" ? "DISABLED" : "ACTIVE" 
+        }),
       })
 
       if (!response.ok) {
@@ -54,7 +62,7 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
 
       toast({
         title: "Success",
-        description: `Room type ${isActive ? 'disabled' : 'enabled'} successfully`,
+        description: `Room type ${currentStatus === "ACTIVE" ? 'disabled' : 'enabled'} successfully`,
       })
 
       onUpdate()
@@ -79,6 +87,7 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
           <TableHead>Child Capacity</TableHead>
           <TableHead>Price Per Night</TableHead>
           <TableHead>Extra Bed Price</TableHead>
+          <TableHead>Description (Arabic)</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -86,7 +95,7 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
       <TableBody>
         {roomTypes.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={7} className="text-center py-8">
+            <TableCell colSpan={8} className="text-center py-8">
               No room types found
             </TableCell>
           </TableRow>
@@ -99,16 +108,22 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
               <TableCell>{formatCurrency(type.basePrice)}</TableCell>
               <TableCell>{formatCurrency(type.extraBedCharge)}</TableCell>
               <TableCell>
-                <Badge variant={type.isActive ? "success" : "destructive"}>
-                  {type.isActive ? "Active" : "Inactive"}
+                <div dir="rtl" className="text-right">
+                  {type.descriptionAr}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={type.status === "ACTIVE" ? "success" : "secondary"}>
+                  {type.status === "ACTIVE" ? "Active" : "Inactive"}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
                 <ActionButtons
                   onView={() => router.push(`/dashboard/room-types/${type.id}`)}
                   onEdit={() => router.push(`/dashboard/room-types/${type.id}/edit`)}
-                  onToggle={() => handleToggleStatus(type.id, type.isActive)}
-                  isActive={type.isActive}
+                  onToggleStatus={() => handleToggleStatus(type.id, type.status)}
+                  isLoading={loadingType === type.id}
+                  isActive={type.status === "ACTIVE"}
                 />
               </TableCell>
             </TableRow>
