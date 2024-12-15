@@ -185,7 +185,7 @@ model Reservation {
   totalAmount         Float
   advanceAmount       Float             @default(0)
   pendingAmount       Float
-  status              ReservationStatus @default(PENDING)
+  status              ReservationStatus @default(UNCONFIRMED)
   noShowDate          DateTime?
   noShowFee           Float?
   activityLogs        ActivityLog[]
@@ -379,14 +379,15 @@ enum RoomStatus {
 }
 
 enum ReservationStatus {
-  PENDING
-  CONFIRMED
-  CHECKED_IN
-  CHECKED_OUT
-  CANCELLED
-  NO_SHOW
-  CHANGE_ROOM
-  REFUNDED
+  UNCONFIRMED      // Initial state when reservation is created
+  CONFIRMED        // After payment is received
+  CHECKED_IN       // Guest has checked in
+  CHECKED_OUT      // Guest has checked out
+  CANCELLED        // Reservation was cancelled
+  NO_SHOW          // Guest didn't show up
+  EXTENDED         // Stay was extended
+  ROOM_CHANGED     // Room was changed during stay
+  EARLY_CHECKOUT   // Guest checked out before scheduled date
 }
 
 enum ServiceType {
@@ -491,17 +492,34 @@ model HotelSettings {
 }
 
 model HotelPolicy {
-  id                    String   @id @default(cuid())
-  checkInTime          String
-  checkOutTime         String
-  lateCheckOutFee      Float
-  earlyCheckOutFee     Float
-  noShowFee            Float
-  freeCancellationHours Int
-  cancellationFee      Float
-  refundPercentage     Float
-  lateRefundPercentage Float
-  unconfirmedHoldHours Int
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  checkInTime            String   // Format: "HH:mm"
+  checkOutTime           String   // Format: "HH:mm"
+  lateCheckoutCharge     Float    // Per hour charge
+  earlyCheckoutCharge    Float    // Flat charge
+  maxLateCheckoutHours   Int      // Maximum hours allowed for late checkout
+  
+  // Cancellation policies
+  freeCancellationHours  Int      // Hours before check-in for free cancellation
+  cancellationCharge     Float    // Percentage of total amount
+  
+  // No show policies
+  noShowCharge          Float    // Percentage of total amount
+  noShowDeadlineHours   Int      // Hours after check-in time to mark as no-show
+  
+  // Payment policies
+  advancePaymentPercent Float    // Required advance payment percentage
+  fullPaymentDeadline   Int      // Hours before check-in for full payment
+  
+  // Reservation policies
+  unconfirmedHoldHours  Int      // Hours to hold unconfirmed reservation
+  minAdvanceBookingHours Int     // Minimum hours before check-in for booking
+  maxAdvanceBookingDays Int      // Maximum days in advance for booking
+  
+  // Group booking policies
+  minGroupSize          Int      // Minimum rooms for group booking
+  groupDiscountPercent  Float    // Default group discount percentage
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

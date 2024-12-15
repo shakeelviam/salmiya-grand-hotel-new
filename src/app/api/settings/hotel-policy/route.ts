@@ -5,16 +5,33 @@ import { authOptions } from "@/lib/auth"
 import { z } from "zod"
 
 const policySchema = z.object({
+  // Check-in/out times
   checkInTime: z.string(),
   checkOutTime: z.string(),
-  lateCheckOutFee: z.number().min(0),
-  earlyCheckOutFee: z.number().min(0),
-  noShowFee: z.number().min(0),
+  lateCheckoutCharge: z.number().min(0),
+  earlyCheckoutCharge: z.number().min(0),
+  maxLateCheckoutHours: z.number().min(0).max(24),
+  
+  // Cancellation policies
   freeCancellationHours: z.number().min(0),
-  cancellationFee: z.number().min(0),
-  refundPercentage: z.number().min(0).max(100),
-  lateRefundPercentage: z.number().min(0).max(100),
-  unconfirmedHoldHours: z.number().min(0),
+  cancellationCharge: z.number().min(0).max(100),
+  
+  // No show policies
+  noShowCharge: z.number().min(0).max(100),
+  noShowDeadlineHours: z.number().min(0).max(48),
+  
+  // Payment policies
+  advancePaymentPercent: z.number().min(0).max(100),
+  fullPaymentDeadline: z.number().min(0),
+  
+  // Reservation policies
+  unconfirmedHoldHours: z.number().min(1).max(72),
+  minAdvanceBookingHours: z.number().min(0),
+  maxAdvanceBookingDays: z.number().min(1).max(365),
+  
+  // Group booking policies
+  minGroupSize: z.number().min(2),
+  groupDiscountPercent: z.number().min(0).max(100),
 })
 
 export async function GET() {
@@ -27,24 +44,29 @@ export async function GET() {
         data: {
           checkInTime: "14:00",
           checkOutTime: "12:00",
-          lateCheckOutFee: 0,
-          earlyCheckOutFee: 0,
-          noShowFee: 0,
-          freeCancellationHours: 24,
-          cancellationFee: 0,
-          refundPercentage: 100,
-          lateRefundPercentage: 0,
+          lateCheckoutCharge: 50,
+          earlyCheckoutCharge: 100,
+          maxLateCheckoutHours: 6,
+          freeCancellationHours: 48,
+          cancellationCharge: 50,
+          noShowCharge: 100,
+          noShowDeadlineHours: 24,
+          advancePaymentPercent: 20,
+          fullPaymentDeadline: 24,
           unconfirmedHoldHours: 24,
+          minAdvanceBookingHours: 24,
+          maxAdvanceBookingDays: 365,
+          minGroupSize: 5,
+          groupDiscountPercent: 10,
         }
       })
     }
 
-    return new NextResponse(JSON.stringify(policy), { status: 200 })
+    return NextResponse.json(policy)
   } catch (error) {
-    return new NextResponse(
-      JSON.stringify({
-        error: "Internal Server Error",
-      }),
+    console.error("[HOTEL_POLICY_GET]", error)
+    return NextResponse.json(
+      { error: "Internal Server Error" },
       { status: 500 }
     )
   }
@@ -54,10 +76,8 @@ export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return new NextResponse(
-        JSON.stringify({
-          error: "Unauthorized",
-        }),
+      return NextResponse.json(
+        { error: "Unauthorized" },
         { status: 401 }
       )
     }
@@ -70,27 +90,23 @@ export async function PATCH(request: Request) {
       where: {
         id: (await prisma.hotelPolicy.findFirst())?.id || 'default',
       },
-      update: {
-        ...body,
-      },
-      create: {
-        ...body,
-      },
+      update: body,
+      create: body,
     })
 
-    return new NextResponse(JSON.stringify(policy), { status: 200 })
+    return NextResponse.json(policy)
   } catch (error) {
+    console.error("[HOTEL_POLICY_PATCH]", error)
+    
     if (error instanceof z.ZodError) {
-      return new NextResponse(JSON.stringify({
-        error: "Invalid request data",
-        details: error.errors,
-      }), { status: 400 })
+      return NextResponse.json(
+        { error: "Invalid request data", details: error.errors },
+        { status: 400 }
+      )
     }
 
-    return new NextResponse(
-      JSON.stringify({
-        error: "Internal Server Error",
-      }),
+    return NextResponse.json(
+      { error: "Internal Server Error" },
       { status: 500 }
     )
   }

@@ -37,46 +37,8 @@ interface RoomTypesTableProps {
 }
 
 export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
-  const [loadingType, setLoadingType] = useState<string | null>(null)
   const { toast } = useToast()
   const router = useRouter()
-
-  const handleToggleStatus = async (typeId: string, currentStatus: string) => {
-    try {
-      setLoadingType(typeId)
-      
-      const response = await fetch(`/api/room-types/${typeId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          status: currentStatus === "ACTIVE" ? "DISABLED" : "ACTIVE" 
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to update room type status')
-      }
-
-      toast({
-        title: "Success",
-        description: `Room type ${currentStatus === "ACTIVE" ? 'disabled' : 'enabled'} successfully`,
-      })
-
-      onUpdate()
-    } catch (error) {
-      console.error('Error updating room type status:', error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update room type status",
-        variant: "destructive",
-      })
-    } finally {
-      setLoadingType(null)
-    }
-  }
 
   return (
     <Table>
@@ -113,17 +75,13 @@ export function RoomTypesTable({ roomTypes, onUpdate }: RoomTypesTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant={type.status === "ACTIVE" ? "success" : "secondary"}>
-                  {type.status === "ACTIVE" ? "Active" : "Inactive"}
-                </Badge>
+                <Badge variant="success">Active</Badge>
               </TableCell>
               <TableCell className="text-right">
                 <ActionButtons
                   onView={() => router.push(`/dashboard/room-types/${type.id}`)}
                   onEdit={() => router.push(`/dashboard/room-types/${type.id}/edit`)}
-                  onToggleStatus={() => handleToggleStatus(type.id, type.status)}
-                  isLoading={loadingType === type.id}
-                  isActive={type.status === "ACTIVE"}
+                  hideToggle={true}
                 />
               </TableCell>
             </TableRow>

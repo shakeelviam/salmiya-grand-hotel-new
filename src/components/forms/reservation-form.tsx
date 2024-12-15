@@ -28,7 +28,7 @@ import { formatCurrency } from "@/lib/utils"
 const reservationSchema = z.object({
   guestId: z.string().min(1, "Guest is required"),
   roomTypeId: z.string().min(1, "Room type is required"),
-  roomId: z.string().min(1, "Room is required"),
+  roomId: z.string().optional(),
   checkIn: z.string().min(1, "Check-in date is required"),
   checkOut: z.string().min(1, "Check-out date is required"),
   adults: z.coerce.number().min(1, "At least 1 adult is required"),
@@ -187,15 +187,20 @@ export function ReservationForm({ onSuccess }: Props) {
         return
       }
 
+      // Remove roomId if it's empty
+      const { roomId, ...restValues } = values
+      const requestData = {
+        ...restValues,
+        totalAmount,
+        ...(roomId && { roomId }),
+      }
+
       const response = await fetch('/api/reservations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...values,
-          totalAmount,
-        }),
+        body: JSON.stringify(requestData),
       })
 
       if (!response.ok) {
@@ -310,11 +315,11 @@ export function ReservationForm({ onSuccess }: Props) {
             name="roomId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Room</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <FormLabel>Room (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select room" />
+                      <SelectValue placeholder="Select room (optional)" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

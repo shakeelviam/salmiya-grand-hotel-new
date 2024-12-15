@@ -87,8 +87,8 @@ export function ServiceForm({ onSuccess, initialData }: Props) {
   async function onSubmit(values: z.infer<typeof serviceSchema>) {
     try {
       setLoading(true)
-      const url = initialData ? `/api/services/${initialData.id}` : '/api/services'"
-      const method = initialData ? 'PUT' : 'POST'"
+      const url = initialData ? `/api/services/${initialData.id}` : '/api/services'
+      const method = initialData ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
         method,

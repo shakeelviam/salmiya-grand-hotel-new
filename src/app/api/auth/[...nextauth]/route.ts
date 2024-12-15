@@ -38,53 +38,49 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) {
-          return null
+          throw new Error("Email and password are required")
         }
 
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
           },
+          include: {
+            roles: true,
+          },
         })
 
-        if (!user || !user.password) {
-          return null
+        if (!user) {
+          throw new Error("No user found with this email")
         }
 
         const isPasswordValid = await compare(credentials.password, user.password)
 
         if (!isPasswordValid) {
-          return null
+          throw new Error("Invalid password")
         }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: user.roles[0]?.name || 'user',
         }
       },
     }),
   ],
   callbacks: {
-    session: ({ session, token }) => {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.id,
-          role: token.role,
-        },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string
+        session.user.role = token.role as string
       }
+      return session
     },
-    jwt: ({ token, user }) => {
+    async jwt({ token, user }) {
       if (user) {
-        const u = user as unknown as any
-        return {
-          ...token,
-          id: u.id,
-          role: u.role,
-        }
+        token.id = user.id
+        token.role = user.role
       }
       return token
     },
@@ -95,10 +91,10 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: true,
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 }
 
 const handler = NextAuth(authOptions)

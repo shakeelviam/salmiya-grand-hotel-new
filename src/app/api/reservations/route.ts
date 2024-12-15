@@ -80,12 +80,12 @@ export async function POST(req: Request) {
     const totalAmount = roomCharges + extraBedCharges
 
     // Determine reservation status based on advance payment
-    // Using correct enum values from ReservationStatus
-    const reservationStatus = advanceAmount > 0 ? "PENDING" : "RESERVED_UNPAID"
+    const reservationStatus = advanceAmount > 0 ? "CONFIRMED" : "UNCONFIRMED"
 
     // Create reservation
     const reservation = await prisma.reservation.create({
       data: {
+        id: nanoid(),
         roomTypeId,
         guestId,
         checkIn: new Date(checkIn),
@@ -100,33 +100,41 @@ export async function POST(req: Request) {
         advanceAmount: advanceAmount || 0,
         pendingAmount: totalAmount - (advanceAmount || 0),
         status: reservationStatus,
-        specialRequests,
+        notes: specialRequests || "",
         userId: session.user.id,
-        roomId: null, // roomId is now optional
       },
       include: {
         roomType: true,
-        guest: {
+        user: {
           select: {
+            id: true,
             name: true,
             email: true,
-            phone: true,
-          }
-        }
-      }
+          },
+        },
+      },
     })
 
-    // If advance payment is made, create a payment record
-    if (advanceAmount > 0 && paymentMode) {
+    // If advance payment was made, create a payment record
+    if (advanceAmount > 0) {
       await prisma.payment.create({
         data: {
           amount: advanceAmount,
           paymentMode,
-          status: "COMPLETED",
-          receiptNumber: `ADV-${nanoid(8).toUpperCase()}`,
           reservationId: reservation.id,
           userId: session.user.id,
-          notes: "Advance payment for reservation",
+          type: "ADVANCE",
+          status: "COMPLETED",
+        },
+      })
+
+      // Create activity log
+      await prisma.activityLog.create({
+        data: {
+          reservationId: reservation.id,
+          userId: session.user.id,
+          action: "PAYMENT",
+          description: `Advance payment of ${advanceAmount} received via ${paymentMode}`,
         },
       })
     }

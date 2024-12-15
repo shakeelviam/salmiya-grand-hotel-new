@@ -3,76 +3,75 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { Icons } from "@/components/ui/icons"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
+
+const formSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(1, {
+    message: "Password is required.",
+  }),
+})
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const [loading, setLoading] = useState(false)
+  const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard"
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
 
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const formData = new FormData(e.currentTarget)
-      const email = formData.get('email') as string
-      const password = formData.get('password') as string
-
-      if (!email || !password) {
-        throw new Error('Please fill in all fields')
-      }
-
-      console.log('Attempting login with:', email)
-      const response = await signIn('credentials', {
-        email,
-        password,
+      setLoading(true)
+      const result = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
         redirect: false,
-        callbackUrl,
       })
 
-      console.log('Login response:', response)
-
-      if (!response) {
-        throw new Error('Authentication failed')
+      if (!result) {
+        throw new Error("Something went wrong")
       }
 
-      if (response.error) {
-        throw new Error(response.error)
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
       }
-
-      if (!response.ok) {
-        throw new Error('Login failed')
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully',
-      })
 
       router.push(callbackUrl)
       router.refresh()
-    } catch (error: any) {
-      console.error('Login error:', error)
+    } catch (error) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in',
-        variant: 'destructive',
+        title: "Error",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
       })
     } finally {
       setLoading(false)
@@ -80,65 +79,63 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-screen py-10">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Sign In</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and password to access your account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
+          Sign in to your account
+        </h2>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
                 name="email"
-                placeholder="name@example.com"
-                type="email"
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect="off"
-                disabled={loading}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="email" 
+                        disabled={loading}
+                        placeholder="Enter your email" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
+
+              <FormField
+                control={form.control}
                 name="password"
-                type="password"
-                autoCapitalize="none"
-                autoComplete="current-password"
-                disabled={loading}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="password" 
+                        disabled={loading}
+                        placeholder="Enter your password" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="flex justify-end">
-              <Link
-                href="/auth/forgot-password"
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                Forgot password?
-              </Link>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading && (
-                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign in
+              </Button>
+            </form>
+          </Form>
+        </div>
+      </div>
     </div>
   )
 }

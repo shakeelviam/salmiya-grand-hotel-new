@@ -46,8 +46,8 @@ export function RoleForm({ onSuccess, role }: RoleFormProps) {
   async function onSubmit(values: z.infer<typeof roleSchema>) {
     try {
       setLoading(true)
-      const url = role ? `/api/roles/${role.id}` : '/api/roles'"
-      const method = role ? 'PUT' : 'POST'"
+      const url = role ? `/api/roles/${role.id}` : '/api/roles'
+      const method = role ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
         method,

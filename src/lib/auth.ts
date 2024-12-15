@@ -45,25 +45,29 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
         token.roles = user.roles
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.roles = token.roles as any[]
+      if (token) {
+        session.user.id = token.id
+        session.user.email = token.email
+        session.user.name = token.name
+        session.user.roles = token.roles
       }
       return session
     },
+  },
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
   },
   session: {
     strategy: "jwt",

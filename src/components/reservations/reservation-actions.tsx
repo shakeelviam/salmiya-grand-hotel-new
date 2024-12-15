@@ -377,49 +377,63 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
     }
   };
 
+  async function handleStatusChange(newStatus: string, data?: any) {
+    try {
+      setIsSubmitting(true)
+      const response = await fetch(`/api/reservations/${reservation.id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          ...data,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update status")
+      }
+
+      await queryClient.invalidateQueries(["reservations"])
+      toast({
+        title: "Success",
+        description: "Reservation status updated successfully",
+      })
+
+      // Close any open dialogs
+      setShowPaymentDialog(false)
+      setShowCheckInDialog(false)
+      setShowCheckOutDialog(false)
+      setShowChangeRoomDialog(false)
+      setShowExtendStayDialog(false)
+      setShowCancelDialog(false)
+      setShowRefundDialog(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update reservation status",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const getAvailableActions = () => {
     switch (reservation.status) {
       case "UNCONFIRMED":
-        return [
-          {
-            label: "Make Payment to Confirm",
-            onClick: () => setShowPaymentDialog(true),
-          },
-          {
-            label: "Cancel",
-            onClick: () => setShowCancelDialog(true),
-          },
-        ]
+        return ["confirm", "cancel"]
       case "CONFIRMED":
-        return [
-          {
-            label: "Check In",
-            onClick: () => setShowCheckInDialog(true),
-          },
-          {
-            label: "Cancel and Refund",
-            onClick: () => setShowRefundDialog(true),
-          },
-        ]
+        return ["check_in", "cancel", "refund"]
       case "CHECKED_IN":
-        return [
-          {
-            label: "Pay and Check Out",
-            onClick: () => setShowCheckOutDialog(true),
-          },
-          {
-            label: "Extend Stay",
-            onClick: () => setShowExtendStayDialog(true),
-          },
-          {
-            label: "Change Room",
-            onClick: () => setShowChangeRoomDialog(true),
-          },
-          {
-            label: "Early Check Out",
-            onClick: () => setShowCheckOutDialog(true),
-          },
-        ]
+        return ["check_out", "change_room", "extend_stay"]
+      case "CHECKED_OUT":
+        return ["refund"]
+      case "CANCELLED":
+        return ["refund"]
+      case "NO_SHOW":
+        return ["refund"]
       default:
         return []
     }
@@ -435,8 +449,34 @@ export function ReservationActions({ reservation }: ReservationActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {getAvailableActions().map((action, index) => (
-            <DropdownMenuItem key={index} onClick={action.onClick}>
-              {action.label}
+            <DropdownMenuItem key={index} onClick={() => {
+              switch (action) {
+                case "confirm":
+                  handleStatusChange("CONFIRMED")
+                  break
+                case "check_in":
+                  setShowCheckInDialog(true)
+                  break
+                case "check_out":
+                  setShowCheckOutDialog(true)
+                  break
+                case "change_room":
+                  setShowChangeRoomDialog(true)
+                  break
+                case "extend_stay":
+                  setShowExtendStayDialog(true)
+                  break
+                case "cancel":
+                  setShowCancelDialog(true)
+                  break
+                case "refund":
+                  setShowRefundDialog(true)
+                  break
+                default:
+                  break
+              }
+            }}>
+              {action}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

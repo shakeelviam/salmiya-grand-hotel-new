@@ -28,6 +28,7 @@ const formSchema = z.object({
   extraBedCharge: z.string().transform((val) => parseFloat(val)),
   amenities: z.string().transform((val) => val.split(",").map((s) => s.trim())),
   imageUrl: z.string().url().optional(),
+  status: z.string().default("ACTIVE")
 })
 
 export function RoomTypeForm() {
@@ -46,6 +47,7 @@ export function RoomTypeForm() {
       extraBedCharge: "",
       amenities: "",
       imageUrl: "",
+      status: "ACTIVE"
     },
   })
 
@@ -210,6 +212,20 @@ export function RoomTypeForm() {
               <FormLabel>Image URL</FormLabel>
               <FormControl>
                 <Input placeholder="https://example.com/room.jpg" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <FormControl>
+                <Input value="ACTIVE" disabled {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

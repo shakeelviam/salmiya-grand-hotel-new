@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
 import { ReservationActions } from "@/components/reservations/reservation-actions"
 import { ReservationsTable } from "@/components/tables/reservations-table"
+import { ReservationCalendar } from "@/components/reservations/reservation-calendar"
 
 interface Reservation {
   id: string
@@ -124,20 +125,11 @@ export default function ReservationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Reservations</h2>
-        <Button onClick={() => router.push("/dashboard/reservations/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Reservation
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -146,52 +138,30 @@ export default function ReservationsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.confirmed}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.confirmed / stats.total) * 100).toFixed(0)}% of total
-            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Checked In</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.checkedIn}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.checkedIn / stats.total) * 100).toFixed(0)}% of total
-            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pending}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.pending / stats.total) * 100).toFixed(0)}% of total
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.cancelled}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.cancelled / stats.total) * 100).toFixed(0)}% of total
-            </p>
           </CardContent>
         </Card>
       </div>
+
+      <ReservationCalendar />
 
       <Card>
         <CardHeader>

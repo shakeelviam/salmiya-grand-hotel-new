@@ -1,28 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Save } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/components/ui/use-toast"
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { toast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form"
 
-const formSchema = z.object({
+const hotelPolicySchema = z.object({
   // Check-in/out times
   checkInTime: z.string(),
   checkOutTime: z.string(),
@@ -52,127 +41,53 @@ const formSchema = z.object({
   groupDiscountPercent: z.coerce.number().min(0).max(100),
 })
 
-type FormData = z.infer<typeof formSchema>
+type HotelPolicyFormValues = z.infer<typeof hotelPolicySchema>
 
-export default function SettingsPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      checkInTime: "14:00",
-      checkOutTime: "12:00",
-      lateCheckoutCharge: 50,
-      earlyCheckoutCharge: 100,
-      maxLateCheckoutHours: 6,
-      freeCancellationHours: 48,
-      cancellationCharge: 50,
-      noShowCharge: 100,
-      noShowDeadlineHours: 24,
-      advancePaymentPercent: 20,
-      fullPaymentDeadline: 24,
-      unconfirmedHoldHours: 24,
-      minAdvanceBookingHours: 24,
-      maxAdvanceBookingDays: 365,
-      minGroupSize: 5,
-      groupDiscountPercent: 10,
-    }
-  })
-
-  useEffect(() => {
-    const fetchPolicy = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/settings/hotel-policy')
-        if (!response.ok) {
-          throw new Error('Failed to load hotel policy')
-        }
-        const data = await response.json()
-        form.reset(data)
-      } catch (error) {
-        setError('Failed to load hotel policy')
+export default function HotelPolicyPage() {
+  const [loading, setLoading] = useState(false)
+  
+  const form = useForm<HotelPolicyFormValues>({
+    resolver: zodResolver(hotelPolicySchema),
+    defaultValues: async () => {
+      const response = await fetch("/api/settings/hotel-policy")
+      if (!response.ok) {
         toast({
           title: "Error",
-          description: "Failed to load hotel policy",
+          description: "Failed to load hotel policies",
           variant: "destructive",
         })
-      } finally {
-        setLoading(false)
+        return {}
       }
-    }
+      return await response.json()
+    },
+  })
 
-    fetchPolicy()
-  }, [form, toast])
-
-  const onSubmit = async (data: FormData) => {
+  async function onSubmit(data: HotelPolicyFormValues) {
     try {
       setLoading(true)
-      const response = await fetch('/api/settings/hotel-policy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/settings/hotel-policy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update hotel policy')
+        throw new Error("Failed to update hotel policies")
       }
 
       toast({
         title: "Success",
-        description: "Hotel policy updated successfully",
+        description: "Hotel policies updated successfully",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update hotel policy",
+        description: error instanceof Error ? error.message : "Failed to update hotel policies",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Hotel Settings</CardTitle>
-            <CardDescription>Loading settings...</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-              <Skeleton className="h-4 w-[300px]" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Error</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (

@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       }),
       amenities: z.array(z.string()).default([]),
       imageUrl: z.string().url().optional().or(z.literal('')).default(""),
+      status: z.literal("ACTIVE").default("ACTIVE"),
     })
 
     // Validate and log the data
@@ -103,33 +104,21 @@ export async function POST(request: Request) {
 
       if (existingRoomType) {
         return NextResponse.json(
-          { error: "Room type with this name already exists" },
+          { error: "A room type with this name already exists" },
           { status: 400 }
         )
       }
 
-      const createData = {
-        name: validatedData.name,
-        description: validatedData.description,
-        descriptionAr: validatedData.descriptionAr,
-        basePrice: validatedData.basePrice,
-        adultCapacity: validatedData.adultCapacity,
-        childCapacity: validatedData.childCapacity,
-        extraBedCharge: validatedData.extraBedCharge,
-        amenities: validatedData.amenities,
-        imageUrl: validatedData.imageUrl || null,
-        status: "ACTIVE"  // Use status field instead of isActive
-      }
-      
-      console.log("Attempting to create with data:", createData)
-      
-      // Create the room type
+      // Create the room type with status always set to ACTIVE
       const roomType = await prisma.roomType.create({
-        data: createData
+        data: {
+          ...validatedData,
+          status: "ACTIVE", // Explicitly set status to ACTIVE
+        }
       })
 
       console.log("Successfully created room type:", roomType)
-      return NextResponse.json(roomType)
+      return NextResponse.json({ roomType })
     } catch (prismaError) {
       console.error("Prisma error details:", {
         error: prismaError,

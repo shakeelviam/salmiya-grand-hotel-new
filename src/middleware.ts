@@ -6,12 +6,18 @@ export default withAuth(
     const token = req.nextauth.token
     const isAuth = !!token
     const isAuthPage = req.nextUrl.pathname.startsWith('/auth')
+    const isApiRoute = req.nextUrl.pathname.startsWith('/api')
 
     console.log('Middleware check:', {
       path: req.nextUrl.pathname,
       isAuth,
       isAuthPage
     })
+
+    // Skip middleware for API routes
+    if (isApiRoute) {
+      return NextResponse.next()
+    }
 
     // If user is on an auth page but already authenticated,
     // redirect to dashboard
@@ -39,5 +45,16 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/auth/:path*']
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/dashboard/:path*',
+    '/auth/:path*'
+  ]
 }

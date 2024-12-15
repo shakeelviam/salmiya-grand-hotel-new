@@ -31,7 +31,7 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
 
   // Room Service Items
   export async function getServiceItems(categoryId?: string) {
-    const endpoint = categoryId ? `/api/services?categoryId=${categoryId}` : '/api/services'"
+    const endpoint = categoryId ? `/api/services?categoryId=${categoryId}` : '/api/services'
     return fetchAPI(endpoint)
   }
 
@@ -47,7 +47,7 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
 
   // Reservation related functions
   export async function getReservations(status?: string) {
-    const endpoint = status ? `/api/reservations?status=${status}` : '/api/reservations'"
+    const endpoint = status ? `/api/reservations?status=${status}` : '/api/reservations'
     return fetchAPI(endpoint)
   }
 
@@ -115,7 +115,7 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
   // Rooms
   export async function getRooms(typeId?: string) {
     try {
-      const endpoint = typeId ? `/api/rooms?roomTypeId=${typeId}` : '/api/rooms'"
+      const endpoint = typeId ? `/api/rooms?roomTypeId=${typeId}` : '/api/rooms'
       const response = await fetch(endpoint, {
         credentials: "include",
       })
@@ -152,12 +152,12 @@ export async function fetchAPI(endpoint: string, method: string = 'GET', body?: 
   }
 
   export async function getPayments(reservationId?: string) {
-    const endpoint = reservationId ? `/api/payments?reservationId=${reservationId}` : '/api/payments'"
+    const endpoint = reservationId ? `/api/payments?reservationId=${reservationId}` : '/api/payments'
     return fetchAPI(endpoint)
   }
 
   export async function getRoomServiceItems() {
-    return fetchAPI('/api/room-service-items')
+    return fetchAPI('/api/services?type=ROOM_SERVICE')
   }
 
   export async function getRoomServiceOrders() {

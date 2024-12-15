@@ -57,12 +57,12 @@ export default function RoomServicePage() {
       ])
       setReservations(reservationsData?.data || [])
       setMenuItems(itemsData?.data || [])
-      setOrders(ordersData?.data || [])
+      setOrders(ordersData || []) 
     } catch (error) {
       console.error("Error loading data:", error)
       toast({
         title: "Error",
-        description: "Failed to load data",
+        description: "Failed to load data. Please try again.",
         variant: "destructive"
       })
     }

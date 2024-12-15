@@ -53,7 +53,7 @@ export const PUT = withPermission(
     try {
       const session = await getServerSession(authOptions)
       if (!session?.user?.email) {
-        return new NextResponse("Unauthorized", { status: 401 })
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
 
       const roleId = params.id
@@ -61,7 +61,7 @@ export const PUT = withPermission(
 
       // Validate permissions array
       if (!Array.isArray(permissions)) {
-        return new NextResponse("Invalid permissions format", { status: 400 })
+        return NextResponse.json({ error: "Invalid permissions format" }, { status: 400 })
       }
 
       const role = await prisma.role.findUnique({
@@ -72,7 +72,7 @@ export const PUT = withPermission(
       })
 
       if (!role) {
-        return new NextResponse("Role not found", { status: 404 })
+        return NextResponse.json({ error: "Role not found" }, { status: 404 })
       }
 
       const user = await prisma.user.findUnique({
@@ -80,7 +80,7 @@ export const PUT = withPermission(
       })
 
       if (!user) {
-        return new NextResponse("User not found", { status: 404 })
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
       }
 
       // Get current permissions for comparison
@@ -92,58 +92,80 @@ export const PUT = withPermission(
       const toAdd = newPermissions.filter(p => !currentPermissions.includes(p))
 
       // Start a transaction
-      await prisma.$transaction(async (tx) => {
-        // Create history entries for removed permissions
-        await Promise.all(
-          toRemove.map(async (p) => {
-            const [subject, action] = p.split(":")
-            await tx.permissionHistory.create({
-              data: {
+      const result = await prisma.$transaction(async (tx) => {
+        // Remove old permissions
+        if (toRemove.length > 0) {
+          await tx.role.update({
+            where: { id: roleId },
+            data: {
+              permissions: {
+                deleteMany: {
+                  OR: toRemove.map(p => {
+                    const [subject, action] = p.split(':')
+                    return { subject, action }
+                  })
+                }
+              }
+            }
+          })
+        }
+
+        // Add new permissions
+        if (toAdd.length > 0) {
+          await tx.role.update({
+            where: { id: roleId },
+            data: {
+              permissions: {
+                create: toAdd.map(p => {
+                  const [subject, action] = p.split(':')
+                  return {
+                    name: `${role.name}:${subject}:${action}`,
+                    subject,
+                    action
+                  }
+                })
+              }
+            }
+          })
+        }
+
+        // Create history entries
+        await tx.permissionHistory.createMany({
+          data: [
+            ...toRemove.map(p => {
+              const [subject, action] = p.split(':')
+              return {
                 roleId,
                 userId: user.id,
-                action: "REVOKE",
-                subject: `${subject}:${action}`,
-              },
-            })
-          })
-        )
-
-        // Create history entries for added permissions
-        await Promise.all(
-          toAdd.map(async (p) => {
-            const [subject, action] = p.split(":")
-            await tx.permissionHistory.create({
-              data: {
+                action: 'REMOVED',
+                details: `Removed ${action} permission for ${subject}`,
+              }
+            }),
+            ...toAdd.map(p => {
+              const [subject, action] = p.split(':')
+              return {
                 roleId,
                 userId: user.id,
-                action: "GRANT",
-                subject: `${subject}:${action}`,
-              },
+                action: 'ADDED',
+                details: `Added ${action} permission for ${subject}`,
+              }
             })
-          })
-        )
-
-        // Update role permissions
-        await tx.role.update({
-          where: { id: roleId },
-          data: {
-            permissions: {
-              disconnect: role.permissions.map(p => ({ id: p.id })), // First remove all permissions
-              connect: permissions.map((p: any) => ({
-                name: `${p.subject}_${p.action}`, // Use this as a unique identifier
-              })),
-            },
-          },
+          ]
         })
+
+        return { added: toAdd.length, removed: toRemove.length }
       })
 
-      return NextResponse.json({ success: true })
+      return NextResponse.json({
+        message: 'Permissions updated successfully',
+        changes: result
+      })
     } catch (error) {
-      console.error("[ROLE_PERMISSIONS_PUT]", error)
-      if (error instanceof Error) {
-        return new NextResponse(error.message, { status: 500 })
-      }
-      return new NextResponse("Internal error", { status: 500 })
+      console.error('Error updating role permissions:', error)
+      return NextResponse.json(
+        { error: 'Failed to update role permissions' },
+        { status: 500 }
+      )
     }
   },
   { action: "UPDATE", subject: "permission" }

@@ -132,6 +132,12 @@ export const navItems = [
         icon: Shield,
         description: "Role and permission management",
       },
+      {
+        title: "Role Permissions",
+        href: "/dashboard/role-permissions",
+        icon: Key,
+        description: "Manage role permissions",
+      },
     ],
   },
   {

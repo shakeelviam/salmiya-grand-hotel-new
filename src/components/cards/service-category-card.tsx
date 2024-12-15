@@ -2,25 +2,27 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Power } from "lucide-react"
 
 type ServiceCategoryCardProps = {
   id: string
   name: string
   description?: string | null
+  isActive: boolean
   onEdit?: (id: string) => void
-  onDelete?: (id: string) => void
+  onToggleActive?: (id: string, isActive: boolean) => void
 }
 
 export function ServiceCategoryCard({
   id,
   name,
   description,
+  isActive,
   onEdit,
-  onDelete,
+  onToggleActive,
 }: ServiceCategoryCardProps) {
   return (
-    <Card className="w-full">
+    <Card className={`w-full ${!isActive ? 'opacity-60' : ''}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-lg font-bold">{name}</CardTitle>
         <div className="flex space-x-2">
@@ -35,15 +37,15 @@ export function ServiceCategoryCard({
               <span className="sr-only">Edit</span>
             </Button>
           )}
-          {onDelete && (
+          {onToggleActive && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onDelete(id)}
-              className="h-8 w-8 text-destructive"
+              onClick={() => onToggleActive(id, !isActive)}
+              className={`h-8 w-8 ${isActive ? 'text-destructive' : 'text-green-600'}`}
             >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
+              <Power className="h-4 w-4" />
+              <span className="sr-only">{isActive ? 'Disable' : 'Enable'}</span>
             </Button>
           )}
         </div>

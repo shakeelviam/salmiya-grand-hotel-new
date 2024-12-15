@@ -21,7 +21,7 @@ import { Loader2 } from "lucide-react"
 
 const serviceCategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   type: z.enum(["FOOD", "NON_FOOD"]),
 })
 
@@ -41,10 +41,10 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
 
   const form = useForm<z.infer<typeof serviceCategorySchema>>({
     resolver: zodResolver(serviceCategorySchema),
-    defaultValues: initialData || {
-      name: "",
-      description: "",
-      type: "NON_FOOD",
+    defaultValues: {
+      name: initialData?.name || "",
+      description: initialData?.description || "",
+      type: initialData?.type || "NON_FOOD",
     },
   })
 
@@ -53,26 +53,35 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
 
     try {
       setLoading(true)
-      const url = initialData ? `/api/service-categories/${initialData.id}` : '/api/service-categories'"
-      const method = initialData ? 'PUT' : 'POST'"
+      const url = initialData ? `/api/service-categories/${initialData.id}` : '/api/service-categories'
+      const method = initialData ? 'PUT' : 'POST'
+
+      // Convert empty description to null
+      const data = {
+        ...values,
+        description: values.description?.trim() || null
+      }
+
+      console.log('Submitting data:', data)
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(data),
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to save service category')
+        throw new Error(result.error || 'Failed to save service category')
       }
 
       toast({
         title: "Success",
-        description: `Service category ${initialData ? 'updated' : 'created'} successfully`,
+        description: result.message || `Service category ${initialData ? 'updated' : 'created'} successfully`,
       })
 
       if (!initialData) {
@@ -94,7 +103,7 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -116,7 +125,12 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea {...field} disabled={loading} />
+                <Textarea 
+                  {...field} 
+                  value={field.value || ''} 
+                  disabled={loading}
+                  onChange={(e) => field.onChange(e.target.value || null)}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,11 +143,7 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type</FormLabel>
-              <Select
-                disabled={loading}
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -149,7 +159,7 @@ export function ServiceCategoryForm({ onSuccess, initialData }: Props) {
           )}
         />
 
-        <Button type="submit" disabled={loading} className="w-full">
+        <Button type="submit" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {initialData ? 'Update' : 'Create'} Service Category
         </Button>

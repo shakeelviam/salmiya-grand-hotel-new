@@ -97,7 +97,7 @@ const ACTIONS = {
   create: "Add new records",
   read: "View existing records",
   update: "Modify existing records",
-  delete: "Remove records"
+  disable: "Disable records"
 } as const
 
 type Permission = {
@@ -356,12 +356,12 @@ export function RolePermissionForm({
         })
         return newPermissions
       },
-      "no_delete": () => {
+      "no_disable": () => {
         const newPermissions: PermissionMap = {}
         Object.values(PERMISSION_CATEGORIES).forEach(category => {
           category.resources.forEach(subject => {
             Object.keys(ACTIONS).forEach(action => {
-              newPermissions[`${subject}:${action}`] = action !== 'delete'"
+              newPermissions[`${subject}:${action}`] = action !== 'disable'
             })
           })
         })
@@ -449,8 +449,8 @@ export function RolePermissionForm({
         <Button variant="outline" onClick={() => applyTemplate("read_only")}>
           Read Only
         </Button>
-        <Button variant="outline" onClick={() => applyTemplate("no_delete")}>
-          No Delete
+        <Button variant="outline" onClick={() => applyTemplate("no_disable")}>
+          No Disable
         </Button>
       </div>
 
@@ -516,7 +516,7 @@ export function RolePermissionForm({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
-                              <span className="capitalize">{subject.replace(/_/g, ' '")}</span>
+                              <span className="capitalize">{subject.replace(/_/g, ' ')}</span>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>{resourceDescriptions[subject]}</p>
@@ -537,8 +537,8 @@ export function RolePermissionForm({
                           {compareRoleId && (
                             <div className={`ml-2 h-2 w-2 rounded-full ${
                               comparePermissions[`${subject}:${action}`] === permissions[`${subject}:${action}`]
-                                ? 'bg-green-500'"
-                                : 'bg-red-500'"
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
                             }`} />
                           )}
                         </div>

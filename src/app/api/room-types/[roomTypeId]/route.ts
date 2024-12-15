@@ -49,11 +49,22 @@ export async function PATCH(
 
     const body = await request.json()
     
+    // Create room type without allowing status changes
     const roomType = await prisma.roomType.update({
       where: {
         id: params.roomTypeId,
       },
-      data: body,
+      data: {
+        name: body.name,
+        description: body.description,
+        descriptionAr: body.descriptionAr,
+        basePrice: body.basePrice,
+        adultCapacity: body.adultCapacity,
+        childCapacity: body.childCapacity,
+        extraBedCharge: body.extraBedCharge,
+        amenities: body.amenities,
+        imageUrl: body.imageUrl,
+      },
     })
 
     return NextResponse.json({ roomType })

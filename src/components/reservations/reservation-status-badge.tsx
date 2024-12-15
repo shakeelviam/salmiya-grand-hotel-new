@@ -21,14 +21,16 @@ import {
   ChevronDown
 } from "lucide-react"
 
-export type ReservationStatus = 
-  | 'DRAFT'"
-  | 'TENTATIVE'"
-  | 'CONFIRMED'"
-  | 'CHECKED_IN'"
-  | 'CHECKED_OUT'"
-  | 'CANCELLED'"
-  | 'NO_SHOW'"
+export type ReservationStatus =
+  | "UNCONFIRMED"
+  | "CONFIRMED"
+  | "CHECKED_IN"
+  | "CHECKED_OUT"
+  | "CANCELLED"
+  | "NO_SHOW"
+  | "EXTENDED"
+  | "ROOM_CHANGED"
+  | "EARLY_CHECKOUT"
 
 interface StatusConfig {
   label: string
@@ -37,51 +39,63 @@ interface StatusConfig {
 }
 
 const statusConfig: Record<ReservationStatus, StatusConfig> = {
-  DRAFT: {
-    label: 'Draft',
+  UNCONFIRMED: {
+    label: "Unconfirmed",
     icon: <FileEdit className="h-4 w-4" />,
-    color: 'bg-gray-100 hover:bg-gray-200 text-gray-900'"
-  },
-  TENTATIVE: {
-    label: 'Tentative',
-    icon: <Clock className="h-4 w-4" />,
-    color: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-900'"
+    color: "bg-gray-100 hover:bg-gray-200 text-gray-900"
   },
   CONFIRMED: {
-    label: 'Confirmed',
+    label: "Confirmed",
     icon: <CalendarCheck className="h-4 w-4" />,
-    color: 'bg-green-100 hover:bg-green-200 text-green-900'"
+    color: "bg-green-100 hover:bg-green-200 text-green-900"
   },
   CHECKED_IN: {
-    label: 'Checked In',
+    label: "Checked In",
     icon: <DoorOpen className="h-4 w-4" />,
-    color: 'bg-blue-100 hover:bg-blue-200 text-blue-900'"
+    color: "bg-blue-100 hover:bg-blue-200 text-blue-900"
   },
   CHECKED_OUT: {
-    label: 'Checked Out',
+    label: "Checked Out",
     icon: <DoorClosed className="h-4 w-4" />,
-    color: 'bg-purple-100 hover:bg-purple-200 text-purple-900'"
+    color: "bg-purple-100 hover:bg-purple-200 text-purple-900"
   },
   CANCELLED: {
-    label: 'Cancelled',
+    label: "Cancelled",
     icon: <Ban className="h-4 w-4" />,
-    color: 'bg-red-100 hover:bg-red-200 text-red-900'"
+    color: "bg-red-100 hover:bg-red-200 text-red-900"
   },
   NO_SHOW: {
-    label: 'No Show',
+    label: "No Show",
     icon: <AlertTriangle className="h-4 w-4" />,
-    color: 'bg-orange-100 hover:bg-orange-200 text-orange-900'"
+    color: "bg-orange-100 hover:bg-orange-200 text-orange-900"
+  },
+  EXTENDED: {
+    label: "Extended",
+    icon: <CalendarCheck className="h-4 w-4" />,
+    color: "bg-indigo-100 hover:bg-indigo-200 text-indigo-900"
+  },
+  ROOM_CHANGED: {
+    label: "Room Changed",
+    icon: <DoorOpen className="h-4 w-4" />,
+    color: "bg-teal-100 hover:bg-teal-200 text-teal-900"
+  },
+  EARLY_CHECKOUT: {
+    label: "Early Checkout",
+    icon: <DoorClosed className="h-4 w-4" />,
+    color: "bg-rose-100 hover:bg-rose-200 text-rose-900"
   }
 }
 
 const allowedTransitions: Record<ReservationStatus, ReservationStatus[]> = {
-  DRAFT: ['TENTATIVE', 'CANCELLED'],
-  TENTATIVE: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['CHECKED_IN', 'CANCELLED', 'NO_SHOW'],
-  CHECKED_IN: ['CHECKED_OUT'],
+  UNCONFIRMED: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["CHECKED_IN", "CANCELLED", "NO_SHOW"],
+  CHECKED_IN: ["CHECKED_OUT", "ROOM_CHANGED", "EXTENDED", "EARLY_CHECKOUT"],
   CHECKED_OUT: [], // Terminal state
   CANCELLED: [], // Terminal state
-  NO_SHOW: [] // Terminal state
+  NO_SHOW: [], // Terminal state
+  EXTENDED: ["CHECKED_OUT", "ROOM_CHANGED", "EARLY_CHECKOUT"],
+  ROOM_CHANGED: ["CHECKED_OUT", "EXTENDED", "EARLY_CHECKOUT"],
+  EARLY_CHECKOUT: [] // Terminal state
 }
 
 interface ReservationStatusBadgeProps {

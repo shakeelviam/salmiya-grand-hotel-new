@@ -31,19 +31,34 @@ export default function ServiceCategoriesPage() {
   const [open, setOpen] = useState(false)
   const [categories, setCategories] = useState<ServiceCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingCategory, setEditingCategory] = useState<ServiceCategory | null>(null)
   const { toast } = useToast()
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/service-categories')
-      if (!response.ok) throw new Error('Failed to fetch service categories')
+      const response = await fetch('/api/service-categories', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch service categories')
+      }
       const result = await response.json()
+      console.log('Service categories response:', result)
+      if (!Array.isArray(result.data)) {
+        console.error('Expected array of categories but got:', typeof result.data)
+        setCategories([])
+        return
+      }
       setCategories(result.data || [])
     } catch (error) {
       console.error('Error fetching service categories:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch service categories",
+        description: error instanceof Error ? error.message : "Failed to fetch service categories",
         variant: "destructive"
       })
     } finally {
@@ -57,7 +72,47 @@ export default function ServiceCategoriesPage() {
 
   const handleSuccess = () => {
     setOpen(false)
+    setEditingCategory(null)
     fetchCategories()
+  }
+
+  const handleEdit = (id: string) => {
+    const category = categories.find(c => c.id === id)
+    if (category) {
+      setEditingCategory(category)
+      setOpen(true)
+    }
+  }
+
+  const handleToggleActive = async (id: string, isActive: boolean) => {
+    try {
+      const response = await fetch(`/api/service-categories/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isActive })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || `Failed to ${isActive ? 'enable' : 'disable'} service category`)
+      }
+
+      toast({
+        title: "Success",
+        description: `Service category ${isActive ? 'enabled' : 'disabled'} successfully`,
+      })
+      fetchCategories()
+    } catch (error) {
+      console.error('Error toggling service category:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update service category",
+        variant: "destructive"
+      })
+    }
   }
 
   if (loading) {
@@ -81,9 +136,12 @@ export default function ServiceCategoriesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Service Category</DialogTitle>
+              <DialogTitle>{editingCategory ? 'Edit' : 'Create New'} Service Category</DialogTitle>
             </DialogHeader>
-            <ServiceCategoryForm onSuccess={handleSuccess} />
+            <ServiceCategoryForm 
+              onSuccess={handleSuccess} 
+              initialData={editingCategory} 
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -92,8 +150,12 @@ export default function ServiceCategoriesPage() {
         {categories.map((category) => (
           <ServiceCategoryCard
             key={category.id}
-            category={category}
-            onUpdate={fetchCategories}
+            id={category.id}
+            name={category.name}
+            description={category.description}
+            isActive={category.isActive}
+            onEdit={handleEdit}
+            onToggleActive={handleToggleActive}
           />
         ))}
       </div>

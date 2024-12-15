@@ -6,7 +6,7 @@ import { z } from "zod"
 
 const serviceCategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   type: z.enum(["FOOD", "NON_FOOD"]),
 })
 
@@ -76,10 +76,14 @@ export async function POST(req: Request) {
         name,
         description,
         type,
+        isActive: true,
       },
     })
 
-    return NextResponse.json(category)
+    return NextResponse.json({
+      data: category,
+      message: "Service category created successfully"
+    })
   } catch (error) {
     console.error("[SERVICE_CATEGORIES_POST]", error)
     return NextResponse.json(
